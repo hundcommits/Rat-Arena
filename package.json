@@ -1,0 +1,14 @@
+{
+  "name": "wererat-rat-arena",
+  "version": "0.1.0",
+  "description": "Wererat Hunters: Rat Arena (2v2 and 3v3 online)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
