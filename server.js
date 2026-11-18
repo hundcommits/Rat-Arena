@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 const TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.pdf': 'application/pdf'};
-const MAX = {'2v2': 4, '3v3': 6};
+const MAX = {'1v1': 2, '2v2': 4, '3v3': 6};
 
 /* ---------- web pages ---------- */
 const server = http.createServer((req, res) => {
@@ -79,13 +79,13 @@ function lobby(r) { const list = [...r.players.values()].map(p => ({id: p.id, na
   for (const p of r.players.values()) send(p, {t: 'lobby', code: r.code, mode: r.mode, started: r.started, host: r.host, phase: r.phase, full: full(r), max: MAX[r.mode], draft: D, players: list}); }
 /* ---------- the draft, MOBA style: bans and picks take turns, one player at a time, each with a timer ---------- */
 function startDraft(r) {
-  const T0 = team(r, 0), T1 = team(r, 1), per = r.mode === '3v3' ? 1 : 3, nb = r.mode === '3v3' ? 2 : 1, seq = [];
+  const T0 = team(r, 0), T1 = team(r, 1), per = r.mode === '3v3' ? 1 : 2, nb = Math.max(T0.length, T1.length), seq = []; // every player bans one hunter; 2 hunters each in 2v2, 1 in 3v3
   // bans alternate SUN, MOON, SUN, MOON...; each team's bans go round its players
   for (let k = 0; k < nb; k++) { seq.push({type: 'ban', team: 0, pid: T0[k % T0.length].id}); seq.push({type: 'ban', team: 1, pid: T1[k % T1.length].id}); }
   // picks snake: SUN 1, MOON 2, SUN 2, MOON 2, ... so nobody gets two first picks in a row; each team's picks go round its players
   const order = [], left = [T0.length * per, T1.length * per]; let t = 0, step = 1; while (left[0] + left[1] > 0) { for (let k = 0; k < step && left[t] > 0; k++) { order.push(t); left[t]--; } t = 1 - t; step = 2; }
   const cnt = [0, 0]; for (const tt of order) { const T = tt ? T1 : T0; seq.push({type: 'pick', team: tt, pid: T[Math.floor(cnt[tt]++ / per) % T.length].id}); }
-  // a player's 3 picks in 2v2 are spread out: rotate players inside the team instead
+  // a player's 2 picks in 2v2 are spread out: rotate players inside the team instead
   if (per > 1) { const c2 = [0, 0]; for (const s of seq) if (s.type === 'pick') { const T = s.team ? T1 : T0; s.pid = T[c2[s.team]++ % T.length].id; } }
   for (const p of r.players.values()) p.heroes = [];
   r.draft = {seq, i: 0, bans: [], until: 0}; r.phase = 'draft'; nextTurn(r, true); }
@@ -110,7 +110,7 @@ function leave(c) { const r = c.room && rooms.get(c.room); c.room = null; if (!r
 function onMessage(c, text) {
   let m; try { m = JSON.parse(text); } catch (e) { return; }
   if (!m || typeof m.t !== 'string') return;
-  if (m.t === 'create') { if (c.room) leave(c); const r = {code: code(), mode: m.mode === '3v3' ? '3v3' : '2v2', host: c.id, players: new Map(), started: false, phase: 'lobby', draft: null}; rooms.set(r.code, r);
+  if (m.t === 'create') { if (c.room) leave(c); const r = {code: code(), mode: MAX[m.mode] ? m.mode : '2v2', host: c.id, players: new Map(), started: false, phase: 'lobby', draft: null}; rooms.set(r.code, r);
     Object.assign(c, {name: String(m.name || 'Hunter').slice(0, 14), team: 0, role: 'guard', heroes: [], room: r.code}); r.players.set(c.id, c); send(c, {t: 'joined', code: r.code, id: c.id, host: true, mode: r.mode}); lobby(r); return; }
   if (m.t === 'join') { const r = rooms.get(String(m.code || '').toUpperCase().trim()); if (!r) return send(c, {t: 'err', msg: 'No room with that code'}); if (r.started || r.phase !== 'lobby') return send(c, {t: 'err', msg: 'That room is already drafting or playing'}); if (r.players.size >= MAX[r.mode]) return send(c, {t: 'err', msg: 'That room is full'});
     if (c.room) leave(c); const n0 = team(r, 0).length, n1 = team(r, 1).length;
@@ -125,6 +125,7 @@ function onMessage(c, text) {
   if (m.t === 'backToLobby') { if (c.id !== r.host) return; resetLobby(r); for (const p of r.players.values()) send(p, {t: 'lobbyAgain'}); lobby(r); return; }
   // everything else is game traffic: pass it on (to one player, or to everyone else in the room)
   m.from = c.id; const out = JSON.stringify(m);
+  if (m.t === 'chat') { m.text = String(m.text || '').slice(0, 140); m.name = c.name; m.team = c.team; const o2 = JSON.stringify(m); for (const p of r.players.values()) if (p !== c && (m.scope !== 'team' || p.team === c.team)) send(p, o2); return; }
   if (m.to) { const p = r.players.get(m.to); if (p) send(p, out); }
   else for (const p of r.players.values()) if (p !== c) send(p, out);
 }

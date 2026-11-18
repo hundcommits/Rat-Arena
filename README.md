@@ -1,35 +1,43 @@
 # Rat Arena (Wererat Hunters online)
 
-Two teams fight over the 7 moon shards on Moon Isle.
+A Mobile Legends style **Brawl**: one straight lane through the Moon Meadow, two teams, towers and minions.
 
-- **2 vs 2**: every player brings three hunters and switches between them (1 2 3 / Q E). Anyone can carry the base.
-- **3 vs 3**: one hunter each, plus a role:
-  - **Guard**: +40% health. Only the guard can carry the base (G). The base heals faster next to the guard.
-  - **Assassin**: +25% damage against players.
-  - **Roamer**: +15% speed and a bigger pickup range. Can carry any number of shards; everyone else can carry only 2.
+- **1 vs 1**: a duel. Each player bans 1 and picks 2 hunters, switching with 1 2 / Q E.
+- **2 vs 2**: every player bans 1 and picks 2 hunters (4 bans, 8 hunters), switching with 1 2 / Q E.
+- **3 vs 3**: every player bans 1 and picks 1 (6 bans, 6 hunters).
 
-## How a match works
-
-- 7 moon shards fall on the island on a timetable: at 0:15, 0:45, 1:30, 2:20, 3:20, 4:30 and 5:50.
 ## The draft (like a MOBA)
 - The host makes a room and shares the code. The draft only starts when the room is **full** (4 players for 2v2, 6 for 3v3) with equal teams.
-- In 3v3 everyone picks a role first: each team has one Guard, one Assassin and one Roamer.
-- **Bans:** teams take turns, SUN then MOON (2 each in 3v3, 1 each in 2v2). 20 seconds per ban. You can skip.
+- **Bans:** every player bans one hunter, teams taking turns SUN, MOON, SUN, MOON. 20 seconds per ban. You can skip.
 - **Picks:** snake order SUN 1, MOON 2, SUN 2, MOON 2... 30 seconds per pick; if time runs out a random hunter is picked.
 - A hunter can only be picked once in the whole match, so the two teams never share a hunter.
 - If someone leaves during the draft, it goes back to the lobby.
 
 ## The match
-- Shards are the 7 moon-heart pieces from the castle. They fill your base's moon heart as you bank them.
-- Walk over a shard to pick it up. It floats over your head. Bring it to your base to **bank** it.
-- If you get taken down, the shards you carry drop on the ground for anyone to take.
-- **Bases are hidden.** You only see the enemy base when someone on your team is close to it.
-- Stand on the enemy base for 2.5s to **steal** one of their banked shards.
-- Monsters come in timed **camps** next to each lair (they come back about 50s after you clear them, faster at night). A roaming **wave** comes about every 70s, and a **mini-boss** appears in the Moon Meadow at 5:00 and 10:00. Monsters attack everyone, bases included.
-- **You win by** banking all 7 shards, or by destroying the enemy base (2500 health).
-- After 15 minutes, the team with more shards banked wins. If shards are tied, the healthier base wins.
-- After a takedown you come back at your base: 7s in 3v3, 10s in 2v2. In 2v2 you only go down when all three of your hunters are down.
-- Lairs, the castle and the shop are closed in the arena. Every hunter is unlocked.
+- The map is a short lane: SUN's base on the left, MOON's on the right. Each team has **three towers** in front of its base: a cone tower (three bolts), a sniper tower (aims a laser, then a burst of needles) and a cannon tower (lobs a shell at where you stand).
+- The lane is long, with a **big river** across the middle that doesn't slow anyone (Anu and Brine love it).
+- Every **26 seconds** a **line** of minions walks out of each base: snake, snake, big skeleton, eagle rider, eagle rider. When a rider falls, a fast-attacking mage skeleton gets up. If a team has lost both towers, the other team sends **double lines** (more XP to catch up). Minions get tougher over time.
+- Killing enemy minions gives **XP** to everyone on your team who is nearby (the last hit gets a little more), so you **level up** and pick upgrades like in the normal game. Takedowns and destroyed towers give XP too.
+- **Towers** shoot minions first. They shoot players in range, and each shot in a row on the same player hurts more. If you hit an enemy player under their own tower, that tower turns on you.
+- Towers fall **in order**: outer tower, inner tower, then the base. They take much less damage from players when none of your minions are close, so push with your wave.
+- Your **base** heals you fast when you stand next to it, and you walk 50% faster near it.
+- Players have about **400 health** in the arena, and nobody can lose more than about a fifth of their health per second to other players, so fights last a few seconds instead of being instant. Every hunter's damage against players is evened out.
+- **Untargetable** players (Shade's ghost, Celeste praying, smoke, etc.) still show, see-through, with UNTARGETABLE over them. Bushes still hide you.
+- You see everyone's attacks and effects. When a player hits you, their name flashes at the bottom of your screen, a red ring shows around them, and an arrow points at them if they are off screen.
+- **Monsters:** at 1:00 the **King Cobra** (in his little fort, top) and the **Giant Crab** (on the beach, bottom) appear. Whoever lands the last hit gets the buff: Cobra Fang (+25% damage for 90s) or Crab Shell (a shield as big as your health, 60s). They come back 2 minutes after dying.
+- At **6:00** the Cobra becomes the **Skeleton Lord**. The team that beats him gets him in place of their next minion wave. He comes back 3 minutes later.
+- Each side has a small **monster camp** (two bone snakes and an imp) for extra XP.
+- Low stone walls line the lane, with gaps into the sides.
+- **Stuns, freezes, slows, pulls and pushes work on players** (stuns last 1s at most, then 1.6s of stun immunity).
+- **Basic attacks are aimed** with the mouse: they only go for enemies near where you point.
+- In 2v2 **each hunter has its own comeback timer**.
+- **Chat:** Enter = team chat, Shift+Enter = all chat (Tab switches while typing). Team messages only reach your team.
+- **Team voice:** the MIC button sends your voice straight to your teammates' browsers (never to the enemy). TEAM VOICE mutes them. It needs the https link (Render gives you one). On a few strict school or office networks, voice may not connect.
+- The arena's **level cap is 15**.
+- Arena-only hunter changes: **Sable's watchtower** has its own health (70% of hers): hits on her go into the tower, and when it breaks she drops out. **Captain Brine's** chest becomes **Iron Hull**: a shield worth 45% of his health for 5s that ends in the SURPRISE stun burst. Short **bushes** sit along the lane walls for snipers like Agent Shade.
+- At the end, a big banner drops (VICTORY / DEFEAT) over everyone's hunters, and the scroll under it opens to show each player's takedowns, times down, towers broken and level.
+- **You win** by destroying the enemy base. There is no time limit.
+- After a takedown you come back at your base. The wait grows as the match goes on: 5 seconds at the start, up to 32 seconds late in the game.
 
 ## Files
 
@@ -63,7 +71,7 @@ This is a **Web Service**, like your In Between game, not a Static Site like the
 
 ## Good to know
 
-- The **host** (whoever made the room) runs the monsters, shards and bases in their browser. They should keep the game tab open and in front for the whole match, because a hidden tab pauses the island for everyone. If the host leaves, the match ends.
+- The **host** (whoever made the room) runs the minions and towers in their browser. They should keep the game tab open and in front for the whole match, because a hidden tab pauses the island for everyone. If the host leaves, the match ends.
 - Damage is worked out on the attacker's screen, so it's made for playing with friends, not strangers. A cheater could fake hits.
-- Best with a keyboard and mouse. Phones can play, but carrying the base needs the **G** key.
+- Best with a keyboard and mouse. Phones can play too.
 - `/health` on the server shows how many rooms are open.
