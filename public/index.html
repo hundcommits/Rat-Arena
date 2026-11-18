@@ -3936,6 +3936,43 @@ addEventListener('keydown', ev => { if (screen !== 'title') return; const ov = d
   if (GATE) { if (['ArrowLeft', 'a', 'A'].includes(k)) gateSel = 0; else if (['ArrowRight', 'd', 'D'].includes(k)) gateSel = 1; else if (k === 'Enter' || k === ' ') gatePick(gateSel); else return; ev.preventDefault(); ev.stopImmediatePropagation(); return; }
   if (k === 'Escape') { GATE = true; ev.stopImmediatePropagation(); } }, true);
 
+/* v26: Luna and Celeste rework (story and arena)
+   Luna: no more Midas. Her night skill is MOON TAX, an electric glow under her feet. The old Moon Tax ring is gone from her days.
+         Her basic is the Moon Zap by day and by night, at its old speed; every 10th zap stuns for 0.1s.
+         Moon Tornado: no 40 limit. It rolls to the end of its range, swallowing small enemies and growing,
+         then it bursts: everything inside is sucked to the middle and stunned for 1s. Two tornadoes no longer blow each other up.
+   Celeste: praying eats one star every 0.1s; Star Shower gives 16 stars, not 22. */
+{ const K = KIT.luna;
+  K.atk = function (m, dt, rat) { if (m.fireT > 0) return; const n = near(rat ? 150 : 170); if (!n) return; m.fireT = rat ? 0.7 : 0.6; faceTo(dirTo(n));
+    m.s.zc = (m.s.zc || 0) + 1; const tenth = m.s.zc % 10 === 0; hurt(n, rat ? 20 : 18, {elec: 1}); if (tenth) { status(n, {stun: 0.1}); word('ZAP!', n.x, n.y - 20, '#FCCC3C'); }
+    fx({k: 'zap', x: G.x + 8 * G.face, y: G.y - 8, x2: n.x, y2: n.y - (n.alt || 0), t: 0.18, col: tenth ? '#FCCC3C' : '#E6F1FB', w: tenth ? 2 : 1}); sfx('shoot'); };
+  K.s1 = function (m) { m.s.glow = 5; m.s.gt = 0; word('MOON TAX', G.x, G.y - 30, '#CECBF6'); sfx('ability'); ring(G.x, G.y + 6, 70, '206,203,246', 0.4); };
+  K.cd1 = 12; K.lab1 = 'TAX'; K.ind1 = ['ring', 70];
+  const tk = K.tick; K.tick = function (m, dt, on, rat) { m.s.tax = 99; tk.call(this, m, dt, on, rat); const s = m.s;
+    if (s.glow > 0) { if (!on) { s.glow = 0; return; } s.glow -= dt; s.gt -= dt; if (s.gt <= 0) { s.gt = 0.4; each(G.x, G.y + 6, 70, e => { hurt(e, 9, {elec: 1}); fx({k: 'zap', x: G.x + (Math.random() - 0.5) * 20, y: G.y + 6, x2: e.x, y2: e.y - 4, t: 0.12, col: '#CECBF6'}); }); } } };
+  const dr = K.draw; K.draw = function (m, rat, hop) { const s = m.s; if (s.glow > 0) { const k = Math.min(1, s.glow), x = Math.round(G.x), y = Math.round(G.y + 10); ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(x, y, 4, x, y, 70); g.addColorStop(0, `rgba(206,203,246,${(0.45 * k).toFixed(2)})`); g.addColorStop(0.6, `rgba(155,143,224,${(0.2 * k).toFixed(2)})`); g.addColorStop(1, 'rgba(155,143,224,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, 70, 49, 0, 0, TAU); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = `rgba(252,233,160,${(0.5 + 0.4 * Math.sin(T * 20)).toFixed(2)})`; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const a = T * 5 + i * TAU / 4, r = 20 + ((T * 60 + i * 13) % 50); ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7); ctx.lineTo(x + Math.cos(a + 0.3) * (r + 8), y + Math.sin(a + 0.3) * (r + 8) * 0.7); ctx.stroke(); } }
+    if (dr) dr.call(this, m, rat, hop); };
+  K.s2 = function (m, ai) { zone({k: 'tornado', x: G.x + Math.cos(ai.a) * 20, y: G.y + Math.sin(ai.a) * 20, sx: G.x, sy: G.y, vx: Math.cos(ai.a) * 36, vy: Math.sin(ai.a) * 36, r: 18, eaten: 0, life: 8, range: 170}); if (m.c2 <= 0) { m.ct2 = -3; word('RECHARGING', G.x, G.y - 26, '#CECBF6'); } };
+  ZONE.tornado.tick = function (z, dt) { if (z.done) return; const trav = Math.hypot(z.x - z.sx, z.y - z.sy);
+    if (trav < z.range) { const o = {x: z.x, y: z.y}; tryMove(o, z.vx * dt, z.vy * dt, true); if (Math.abs(o.x - z.x) + Math.abs(o.y - z.y) < 0.01) z.range = 0; z.x = o.x; z.y = o.y; }
+    each(z.x, z.y, z.r + 40, e => pullTo(e, z.x, z.y, 34 * dt));
+    z.tk = (z.tk || 0) - dt; if (z.tk <= 0) { z.tk = 0.15; each(z.x, z.y, z.r, e => { if (!e.boss && !e.static) { z.eaten++; z.r = Math.min(70, z.r + 1.5); sparks(e.x, e.y, 4, '#CECBF6'); hurt(e, 9999); } else hurt(e, 5); }); }
+    if (trav >= z.range || z.life <= 0.1) { const R = z.r + 34; z.done = true; z.life = 0.35; boom(z.x, z.y, R, '155,143,224'); ring(z.x, z.y, R * 1.2, '252,204,60', 0.5); shake = 0.3; sfx('boom'); sparks(z.x, z.y, 22, '#CECBF6', '#FCCC3C', 140); word('MOON SNAP', z.x, z.y - 40, '#FCCC3C');
+      each(z.x, z.y, R, e => { pullTo(e, z.x, z.y, 200); hurt(e, 40 + z.eaten * 3); status(e, {stun: 1}); }); } };
+  K.pas = 'Moon Zap: every 10th zap stuns for 0.1s. TEAM: shards +25%, gold x2'; K.natk = 'Moon Zap, a little slower at night';
+  K.ab1 = 'Moon Tax (12s): an electric glow under her feet for 5s, zapping every enemy near her';
+  K.ab2 = 'Moon Tornado (2 charges): rolls out, swallowing small enemies and growing, then bursts at the end of its range: everything inside is sucked to the middle and stunned for 1s'; }
+{ const K = KIT.celeste, tk = K.tick, s1 = K.s1, s3 = K.s3;
+  K.tick = function (m, dt, on, rat) { if (m.s.praying && on) m.s.pray += dt * 9; return tk.call(this, m, dt, on, rat); };
+  K.s1 = function (m, ...a) { const r = s1.call(this, m, ...a); if (r !== false) m.s.pray = 0; return r; };
+  if (s3) { K.s3 = function (m) { m.s.stars = 16; m.s.ref = 0; sparks(G.x, G.y, 22, '#FFF1B8', '#FCCC3C', 110); word('16 STARS', G.x, G.y - 30, '#FFF1B8'); sfx('level'); }; K.ab3 = 'Star Shower (15s): all her stars come back, plus 4 extra: 16 stars'; } }
+/* Ash: her flight fuel drains 2.5x faster (about 8s in the air unless she keeps burning things), and her roar overheats after about 4s instead of 10 */
+{ const K = KIT.ash, tk = K.tick; K.tick = function (m, dt, on, rat) { const s = m.s; if (on && s.fly > 0) s.fly = Math.max(0.01, s.fly - dt * 1.5); if (on && s.blow) s.heat = Math.min(10, (s.heat || 0) + dt * 1.5); return tk.call(this, m, dt, on, rat); };
+  K.ab2 = 'Take Flight (10s after landing): her wings flare up and she flies over water, lava, gaps, trees and rocks for about 8s. Every enemy her fire hits gives her a little more time in the air';
+  K.ab3 = 'Fire Roar (HOLD): a cone of fire where you aim that grows the longer you hold. About 4s of roaring overheats her for 3s'; }
+
 </script>
 <style>
 #arena{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;color:#FFF1B8;
@@ -3953,7 +3990,7 @@ addEventListener('keydown', ev => { if (screen !== 'title') return; const ov = d
 #arena .btn:disabled{opacity:.45;cursor:default;transform:none}
 #arena .btn.ghost{background:#E6E2D2;box-shadow:inset 0 3px 0 #fff,inset 0 -4px 0 #a8a294,0 4px 0 #1e140d}#arena .btn.purple{background:#B07FE0;color:#fff;box-shadow:inset 0 3px 0 #D8C0F4,inset 0 -4px 0 #6A3FA0,0 4px 0 #1e140d}#arena .btn.green{background:#97C459;box-shadow:inset 0 3px 0 #C8E89A,inset 0 -4px 0 #5E8A2E,0 4px 0 #1e140d}
 #arena .btn.sun{background:#FCCC3C}#arena .btn.moon{background:#B07FE0;color:#fff;box-shadow:inset 0 3px 0 #D8C0F4,inset 0 -4px 0 #6A3FA0,0 4px 0 #1e140d}
-#arena .modes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#arena .modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 #arena .mode>b{display:block;font-size:22px;color:#FFF1B8;text-shadow:2px 2px 0 #1e140d}#arena .mode p{margin:6px 0 12px;font-size:13px;line-height:1.45}
 #arena .mode.m2{border-color:#6A4A10}#arena .mode.m3{border-color:#3E2E62}
 #arena .heroes{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
@@ -3976,7 +4013,16 @@ addEventListener('keydown', ev => { if (screen !== 'title') return; const ov = d
 #arena .chatlog{height:110px;overflow-y:auto;background:#fffaf0;border:3px solid #d9c38f;padding:6px 8px;margin:0 0 8px;font-size:13px;line-height:1.45}#arena .chatlog b{margin-right:4px}
 #arStatus{text-align:center;min-height:18px;font-size:13px;color:#97C459}#arStatus.bad{color:#F4A0A0}
 #arena .rules{font-size:12.5px;line-height:1.55}
-#arena .end{text-align:center;padding-top:6vh}#arena .end h1{font-size:44px;color:#FCCC3C;text-shadow:3px 3px 0 #1e140d}
+#arena .end{text-align:center;padding-top:2vh}
+#arena .scroll{width:min(640px,94%);margin:14px auto 4px;cursor:pointer;transition:transform .15s}#arena .scroll:hover{transform:translateY(-2px)}
+#arena .scroll .rod{height:14px;background:linear-gradient(#a8743e,#6a4426);border:3px solid #1e140d;border-radius:8px;margin:0 -10px;box-shadow:0 3px 0 #0008}
+#arena .scroll .paper{max-height:10px;overflow:hidden;background:repeating-linear-gradient(#F3E5C0 0 13px,#E8D6A8 13px 14px);border-left:3px solid #c8a870;border-right:3px solid #c8a870;transition:max-height .5s ease;position:relative;color:#3a2a18}
+#arena .scroll.open .paper{max-height:600px;padding:10px 14px 70px}
+#arena .scroll table{width:100%;border-collapse:collapse;font-size:13px;font-weight:700}#arena .scroll th{font-size:11px;color:#8A6A3A;text-align:center;padding:4px}#arena .scroll th:first-child{text-align:left}
+#arena .scroll td{text-align:center;padding:4px;border-bottom:1px dashed #c8a870}#arena .scroll tr.th td{text-align:left;font-weight:900;padding-top:10px;border:0;letter-spacing:.06em}
+#arena .scroll td.who{display:flex;align-items:center;gap:6px;text-align:left}#arena .scroll td.who img{width:24px;height:32px;image-rendering:pixelated}#arena .scroll td.who span{display:flex;flex-direction:column}#arena .scroll td.who small{font-size:10px;color:#8A6A3A}
+#arena .seal{position:absolute;right:14px;bottom:10px;width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#E24B4A,#9A2A1A);color:#FFF1B8;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #B8301E66;transform:rotate(-10deg)}#arena .seal.lost{background:radial-gradient(circle at 40% 35%,#8A8890,#4A4656);box-shadow:0 0 0 4px #55525E66}
+#arena .scroll:not(.open) .seal{display:none}#arena .end h1{font-size:44px;color:#FCCC3C;text-shadow:3px 3px 0 #1e140d}
 #arena .sub{text-align:center;color:#CECBF6;margin:8px 0 6px;font-size:13px}
 @media (max-width:620px){#arena .modes{grid-template-columns:1fr}#arena .hero .por{width:52px;height:56px}}
 </style>
@@ -3990,11 +4036,12 @@ addEventListener('keydown', ev => { if (screen !== 'title') return; const ov = d
   <canvas class="stage" id="arHomeStage" width="384" height="140"></canvas>
   <div class="card parch"><h2>Your hunter name</h2><input id="arName" maxlength="14" placeholder="Hunter"></div>
   <div class="modes">
+   <div class="card mode m1"><b>1 VS 1</b><p>A duel. Each player bans one hunter and picks <b>two</b>, switching with 1 2 / Q E.</p><button class="btn green" id="ar1v1">Create a 1v1 room</button></div>
    <div class="card mode m2"><b>2 VS 2</b><p>Each player bans one hunter and picks <b>two</b>, switching between them with 1 2 / Q E.</p><button class="btn" id="ar2v2">Create a 2v2 room</button></div>
    <div class="card mode m3"><b>3 VS 3</b><p>Each player bans one hunter and picks <b>one</b>. No switching.</p><button class="btn purple" id="ar3v3">Create a 3v3 room</button></div>
   </div>
   <div class="card"><h2>Join a friend</h2><div class="row"><input id="arJoinCode" placeholder="RAT-XXXX" maxlength="8" style="text-transform:uppercase"><button class="btn green" id="arJoin">Join</button></div></div>
-  <div class="card parch rules"><b>How to win:</b> one long lane through the Moon Meadow, cut by a big river in the middle (it never slows you). Each team has two towers and a base. Every 26 seconds a line of minions marches out: two snakes, a big skeleton and two eagle riders (a fast mage skeleton jumps off each rider when it falls). Kill them for XP. Lose both towers and the enemy sends double lines (more XP for you to come back). The King Cobra in his fort gives +25% damage, the Giant Crab on the beach gives a shield as big as your health, both to whoever lands the last hit. At 6:00 the Cobra becomes the Skeleton Lord: beat him and he leads your next wave. Each side also has a small monster camp. Break the enemy base to win.<br><b>Keys:</b> move with WASD or the arrows, aim with the mouse (basic attacks go where you point), attack with R / F / left click, skills with Space and Shift, switch hunters with 1 2 3 in 2v2, pick level-up upgrades with Z X C.<br><b>Host:</b> your browser runs the monsters and the rules, so keep the game tab open and in front for the whole match (a hidden tab pauses the island for everyone).</div>
+  <div class="card parch rules"><b>How to win:</b> one long lane through the Moon Meadow, cut by a big river in the middle (it never slows you). Each team has three towers (cone, sniper, cannon) and a base. Every 26 seconds a line of minions marches out: two snakes, a big skeleton and two eagle riders (a fast mage skeleton jumps off each rider when it falls). Kill them for XP. Lose both towers and the enemy sends double lines (more XP for you to come back). The King Cobra in his fort gives +25% damage, the Giant Crab on the beach gives a shield as big as your health, both to whoever lands the last hit. At 6:00 the Cobra becomes the Skeleton Lord: beat him and he leads your next wave. Each side also has a small monster camp. Break the enemy base to win: there is no time limit.<br><b>Keys:</b> move with WASD or the arrows, aim with the mouse (basic attacks go where you point), attack with R / F / left click, skills with Space and Shift, switch hunters with 1 2 3 in 2v2, pick level-up upgrades with Z X C.<br><b>Host:</b> your browser runs the monsters and the rules, so keep the game tab open and in front for the whole match (a hidden tab pauses the island for everyone).</div>
  </div>
  <div class="scr" id="ar_room" style="display:none">
   <canvas class="stage" id="arStage" width="384" height="150"></canvas><p class="sub" id="arMode" style="display:none"></p><div class="joins"><button class="btn sun" id="arJoin0">Join SUN</button><button class="btn moon" id="arJoin1">Join MOON</button></div>
@@ -4004,7 +4051,9 @@ addEventListener('keydown', ev => { if (screen !== 'title') return; const ov = d
   <div class="card parch" id="arChatCard"><h2>Chat</h2><div id="arChatLog" class="chatlog"></div><div class="row"><button class="btn ghost" id="arChatScope" style="padding:8px 10px">TEAM</button><input id="arChatLobbyIn" maxlength="120" placeholder="Say something…" style="max-width:none;flex:1"><button class="btn green" id="arChatSendBtn">Send</button></div></div>
   <div class="card" id="arPool"><h2 id="arPickTitle">The hunters</h2><div class="heroes" id="arHeroes"></div></div>
  </div>
- <div class="scr end" id="ar_end" style="display:none"><canvas class="stage" id="arEndStage" width="384" height="150"></canvas><h1 id="arEndT"></h1><p class="sub" id="arEndWhy"></p><button class="btn" id="arAgain">Back to the lobby</button><p class="sub">Only the host can take everyone back to the lobby.</p></div>
+ <div class="scr end" id="ar_end" style="display:none"><canvas class="stage" id="arEndStage" width="384" height="172"></canvas>
+  <div id="arScroll" class="scroll"><div class="rod"></div><div class="paper"><table id="arStats"><thead><tr><th>HUNTER</th><th>KO</th><th>DOWN</th><th>TOWERS</th><th>LVL</th></tr></thead></table><div id="arSeal" class="seal"></div></div><div class="rod"></div></div>
+  <p class="sub" id="arScrollHint"></p><button class="btn" id="arAgain">Back to the lobby</button><p class="sub">Only the host can take everyone back to the lobby.</p></div>
  <div id="arStatus"></div>
 </div></div>
 <script>
@@ -4022,8 +4071,8 @@ addEventListener('keyup', e => { const a = document.getElementById('arena'); if 
    Damage you deal is worked out on your screen and sent to whoever you hit. Every effect you make is sent too, so others see it. */
 const AR = {on: false, host: false, id: null, hostId: null, mode: '2v2', code: '', ws: null, lobby: null, R: {}, nm: {}, S: [], t: 0, deadT: 0, over: null, allow: false,
   q: {hm: {}, hp: {}, hb: {}, cc: {}}, sendT: 0, snapT: 0, flushT: 0, feed: [], nid: 1, kills: [0, 0], fxq: [], zq: [], zid: 1, gz: {}, pb: 0, hurtBy: null, lastFrom: null, lastHitT: -9};
-const LANE = {LX: 700, T2: 470, T1: 250, LH: 74, FH: 196, RW: 34};
-const AR_RULES = {matchSecs: 15 * 60, baseHP: 9000, towerHP: 6500, waveEvery: 26, firstWave: 5, hp: 400, pvp: 0.55, capBurst: 0.32, capPS: 0.2, towerRange: 140, baseRange: 160, neutralAt: 60, neutralBack: 120, buffSecs: 90};
+const LANE = {LX: 720, T3: 580, T2: 420, T1: 250, LH: 74, FH: 196, RW: 34};
+const AR_RULES = {matchSecs: 15 * 60, baseHP: 9000, towerHP: 5000, waveEvery: 26, firstWave: 5, hp: 400, pvp: 0.55, capBurst: 0.32, capPS: 0.2, towerRange: 140, baseRange: 160, neutralAt: 60, neutralBack: 120, buffSecs: 90};
 const TEAMC = ['#FCCC3C', '#B07FE0'], TEAMN = ['SUN', 'MOON'], TEAMRGB = ['252,204,60', '176,127,224'];
 /* how hard each hunter hits other players (day, night): measured against a training dummy, so weak hitters get a boost and the very strong ones are toned down */
 const AR_K = {supernan: [0.9, 1], volt: [1.1, 0.65], brine: [2, 1.55], bulwark: [1.45, 0.65], samunai: [1.35, 1.3], kage: [1.3, 1.6], frost: [1.7, 1.4], squeak: [0.6, 1.15], regina: [1.8, 0.7],
@@ -4061,11 +4110,12 @@ function arOn(m) {
     case 'died': arDied(m); break;
     case 'buff': if (AR.on && AR.deadT <= 0) arGotBuff(m.k); break;
     case 'cc': arGotCC(m); break;
+    case 'hpush': if (AR.host) for (const [id, dx, dy] of m.h) { const e = AR.nm[id]; if (!e || e.dead || (e.neutral && e.camp === undefined)) continue; const l = Math.hypot(dx, dy), k = l > 60 ? 60 / l : 1, o = {x: e.x, y: e.y}; tryMove(o, dx * k, dy * k, e.fly); e.x = e.px = o.x; e.y = e.py = o.y; } break;
     case 'chat': arChatAdd(m); break;
     case 'rtc': arRtc(m); break;
     case 'focus': if (AR.host && AR.on) arTowerFocus(m.pid, m.from); break;
     case 'fx': if (AR.on) arFx(m); break;
-    case 'end': arEnd(m.win, m.why); break;
+    case 'end': arEnd(m.win, m.why, m.st); break;
   }
 }
 
@@ -4082,9 +4132,9 @@ function arTerr(tx, ty) { const x = tx * TS + 8, y = ty * TS + 8, ax = Math.abs(
   // the big river down the middle: it does not slow anyone in the arena
   if (ax < LANE.RW && y > -112 && y < 150) return 'w'; if (ax < LANE.RW + 8 && y > -112 && y < 150) return 's';
   if (ay < 18 && ax < LANE.LX) return 'o';                              // the dirt road
-  if (ay < LANE.LH) return 'g';
+  if (ay < LANE.LH) return (ay > LANE.LH - 18 && ax < LANE.LX - 60 && (Math.abs(ax - 200) < 26 || Math.abs(ax - 330) < 20 || Math.abs(ax - 500) < 26)) ? 'B' : 'g';
   // low stone walls line the lane, with gaps to slip into the sides
-  if (ay < LANE.LH + 18 && ax < LANE.LX - 50 && !(Math.abs(ax - 140) < 22 || Math.abs(ax - 380) < 22 || Math.abs(ax - 600) < 20)) return 'W';
+  if (ay < LANE.LH + 34 && ax < LANE.LX - 50 && !(Math.abs(ax - 140) < 22 || Math.abs(ax - 380) < 22 || Math.abs(ax - 600) < 20)) return (ay > LANE.LH + 16 && (Math.abs(ax - 260) < 30 || Math.abs(ax - 460) < 30)) ? 'B' : 'W';
   // the sides are mirrored, so both teams get the same cover
   if (d(140, 116) < 24 || d(380, 120) < 24 || d(560, 120) < 20) return 'B';  // bushes to hide in
   if (d(270, 160) < 9 || d(290, 148) < 7 || d(255, 144) < 6) return 'T'; if (d(272, 154) < 36) return 'f';   // a corner of the Whispering Forest
@@ -4099,14 +4149,15 @@ function arResetMap() { try { CHK.clear(); } catch (e) {} }
 /* ---------- starting a match ---------- */
 function arMkStructs() { const S = []; for (const t of [0, 1]) { const s = arSide(t);
     S.push({id: S.length, team: t, kind: 'base', x: s * LANE.LX, y: 0, hp: AR_RULES.baseHP, max: AR_RULES.baseHP});
-    S.push({id: S.length, team: t, kind: 't2', x: s * LANE.T2, y: 0, hp: AR_RULES.towerHP, max: AR_RULES.towerHP});
-    S.push({id: S.length, team: t, kind: 't1', x: s * LANE.T1, y: 0, hp: AR_RULES.towerHP, max: AR_RULES.towerHP}); }
-  for (const s of S) Object.assign(s, {cd: 1, dead: false, focus: null, focusT: 0, streak: 0, lastT: null}); return S; }
+    S.push({id: S.length, team: t, kind: 't3', tw: 'cannon', x: s * LANE.T3, y: 0, hp: AR_RULES.towerHP, max: AR_RULES.towerHP});
+    S.push({id: S.length, team: t, kind: 't2', tw: 'sniper', x: s * LANE.T2, y: 0, hp: AR_RULES.towerHP, max: AR_RULES.towerHP});
+    S.push({id: S.length, team: t, kind: 't1', tw: 'turret', x: s * LANE.T1, y: 0, hp: AR_RULES.towerHP, max: AR_RULES.towerHP}); }
+  for (const s of S) Object.assign(s, {cd: 1, dead: false, focus: null, focusT: 0, streak: 0, lastT: null, tid: null, aim: null, burst: 0}); return S; }
 const arBaseOf = t => AR.S.find(s => s.team === t && s.kind === 'base');
-function arVuln(s) { if (!s || s.dead) return false; if (s.kind === 't1') return true; const need = s.kind === 't2' ? 't1' : 't2'; const p = AR.S.find(q => q.team === s.team && q.kind === need); return !p || p.dead; }
+function arVuln(s) { if (!s || s.dead) return false; if (s.kind === 't1') return true; const need = {t2: 't1', t3: 't2', base: 't3'}[s.kind]; const p = AR.S.find(q => q.team === s.team && q.kind === need); return !p || p.dead; }
 function arStart(m) {
   AR.on = true; AR.over = null; AR.mode = m.mode; AR.hostId = m.host; AR.host = m.host === AR.id; AR.t = 0; AR.deadT = 0; AR.R = {}; AR.nm = {}; AR.feed = []; AR.nid = 1; AR.kills = [0, 0]; AR.waveT = AR_RULES.firstWave; AR.wave = 0;
-  arWrapZones(); AR.fxq = []; AR.zq = []; AR.gz = {}; AR.pb = 0; AR.fangT = 0; AR.shellT = 0; AR.lordFor = [0, 0]; AR.lordUp = false; for (const C of CAMPS) C.t = 30; AR.nT = {cobra: AR_RULES.neutralAt, gcrab: AR_RULES.neutralAt, warden: 1e9}; AR.mt = []; AR.ccImm = 0; AR.slowT = 0; AR.revealT = 0; AR.pushB = 0; AR.hurtBy = null; AR.S = arMkStructs(); AR.sp = {};
+  arWrapZones(); AR.fxq = []; AR.zq = []; AR.gz = {}; AR.pb = 0; AR.stat = {}; AR.fangT = 0; AR.shellT = 0; AR.lordFor = [0, 0]; AR.lordUp = false; for (const C of CAMPS) C.t = 30; AR.nT = {cobra: AR_RULES.neutralAt, gcrab: AR_RULES.neutralAt, warden: 1e9}; AR.mt = []; AR.ccImm = 0; AR.slowT = 0; AR.revealT = 0; AR.pushB = 0; AR.hurtBy = null; AR.S = arMkStructs(); AR.sp = {};
   const me = m.players.find(p => p.id === AR.id); AR.me = me; AR.team = me.team;
   for (const p of m.players) if (p.id !== AR.id) AR.R[p.id] = {id: p.id, name: p.name, team: p.team, x: 0, y: 0, tx: 0, ty: 0, hp: 100, max: 100, dead: false, hid: p.heroes[0] || 'supernan', rat: false, face: 1, walk: 0, seen: 0, lvl: 1};
   const want = (me.heroes && me.heroes.length ? me.heroes : ['supernan']).slice(0, AR.mode === '3v3' ? 1 : 2); picks = want.map(id => HUNTERS.findIndex(h => h.id === id)).filter(i => i >= 0); if (!picks.length) picks = [0]; sel = picks[0];
@@ -4117,7 +4168,7 @@ function arStart(m) {
   G.team.forEach(q => { q.max = Math.round(AR_RULES.hp * Math.min(1.3, Math.max(0.8, Math.sqrt((+q.h.hp || avg) / avg)))); q.hp = q.max; });
   const b = arBaseOf(AR.team); G.x = b.x - arSide(AR.team) * 40; G.y = b.y + (Math.random() - 0.5) * 40;
   zone({k: 'arworld', x: 0, y: 0, r: 1, life: 1e9, perm: true});
-  toast(AR.mode === '3v3' ? '3v3 BRAWL' : '2v2 BRAWL - SWITCH HUNTERS WITH 1 2 3'); toast(`TEAM ${TEAMN[AR.team]}: BREAK THEIR TOWERS, THEN THEIR BASE`);
+  toast(AR.mode === '3v3' ? '3v3 BRAWL' : `${AR.mode.toUpperCase()} BRAWL - SWITCH HUNTERS WITH 1 2`); toast(`TEAM ${TEAMN[AR.team]}: BREAK THEIR TOWERS, THEN THEIR BASE`);
   sfx('level'); arVoiceStart(); $a('#arComms').style.display = 'flex';
 }
 
@@ -4145,8 +4196,8 @@ function arDamage(tg, d, from) { if (!tg || AR.over) return; const o = tg.o;
   else if (tg.kind === 's') arStructHit(o, d, null);
   else if (o.local) hurtMe(d, null, false);
   else arSend({t: 'hit', to: o.id, d: Math.round(d), mon: 1}); }
-function arBolt(x1, y1, x2, y2, col, w, t) { fx({k: 'tbolt', x: x1, y: y1, x2, y2, t: t || 0.18, t0: t || 0.18, col, w: w || 2}); }
-function arMinionTick(e, dt) { e.flash = Math.max(0, (e.flash || 0) - dt); e.ph = (e.ph || 0) + dt * 6; e.hbT = Math.max(0, (e.hbT || 0) - dt);
+function arMinionTick(e, dt) { if (e.team === AR.team && e.px !== undefined) { e.x = e.px; e.y = e.py; } try { arMinionTick2(e, dt); } finally { e.px = e.x; e.py = e.y; } }
+function arMinionTick2(e, dt) { if (e.lunge > 0) e.lunge -= dt; e.flash = Math.max(0, (e.flash || 0) - dt); e.ph = (e.ph || 0) + dt * 6; e.hbT = Math.max(0, (e.hbT || 0) - dt);
   if (e.burn > 0) { e.burn -= dt; e.hp -= 6 * dt; } if (e.poison > 0) { e.poison -= dt; e.hp -= 7 * dt; } if (e.hp <= 0) return arMinionDie(e, e.lastBy || null);
   for (const k of ['stun', 'frozen', 'dance', 'confuse', 'slow']) if (e[k] > 0) e[k] -= dt; if (e.stun > 0 || e.frozen > 0 || e.dance > 0) return;
   const s = arSide(e.team), sp = e.msp * (e.slow > 0 ? 0.6 : 1); e.acd -= dt;
@@ -4155,7 +4206,7 @@ function arMinionTick(e, dt) { e.flash = Math.max(0, (e.flash || 0) - dt); e.ph 
   if (tg) { const tr = tg.kind === 's' ? 15 : tg.kind === 'm' ? tg.o.r : 7, dx = tg.o.x - e.x, dy = tg.o.y - e.y; e.face = dx >= 0 ? 1 : -1;
     if (tg.d > reach + tr - 4) { const l = Math.hypot(dx, dy) || 1, o = {x: e.x, y: e.y}; tryMove(o, dx / l * sp * dt, dy / l * sp * dt, false); e.x = o.x; e.y = o.y; }
     else if (e.acd <= 0) { e.acd = e.fast ? 0.55 : e.rng ? 1.3 : e.lord ? 1.4 : 1.0; let d = e.mdmg; if (tg.kind === 's') d *= e.siege ? 5 : 2.2; if (tg.kind === 'p') d *= 0.8;
-      if (e.rng) arBolt(e.x, e.y - 8, tg.o.x, tg.o.y - 8, e.fast ? '#9AD0FF' : e.team ? '#CEAAFF' : '#FFE27A', 1, 0.15); else if (e.lord) fx({k: 'pulse', x: tg.o.x, y: tg.o.y, r: 22, t: 0.3, t0: 0.3, col: '230,220,200'}); else fx({k: 'swipe', x: e.x + e.face * 6, y: e.y - 4, f: e.face, t: 0.15});
+      e.lunge = 0.18; e.la = Math.atan2(tg.o.y - e.y, tg.o.x - e.x); if (e.rng) arShotFx('mage', e.x, e.y - 8, tg.o.x, tg.o.y - 8, 0.2, e.team ? '230,90,90' : '90,150,240'); else { fx({k: 'claw', x: tg.o.x, y: tg.o.y - 6, t: 0.18, f: e.face}); sparks(tg.o.x, tg.o.y - 4, 3, '#FFF1B8', '#ffffff', 40); } if (e.lord) fx({k: 'pulse', x: tg.o.x, y: tg.o.y, r: 22, t: 0.3, t0: 0.3, col: '230,220,200'}); else fx({k: 'swipe', x: e.x + e.face * 6, y: e.y - 4, f: e.face, t: 0.15});
       arDamage(tg, d, null); } }
   else { const tx = s * -1 * (LANE.LX + 60), dy = (e.ly || 0) - e.y, o = {x: e.x, y: e.y}; tryMove(o, -s * sp * dt, Math.max(-sp, Math.min(sp, dy * 2)) * dt, false); e.x = o.x; e.y = o.y; e.face = -s; }
   // don't stack on top of each other
@@ -4163,23 +4214,37 @@ function arMinionTick(e, dt) { e.flash = Math.max(0, (e.flash || 0) - dt); e.ph 
 function arMinionDie(e, by) { if (e.dead) return; e.dead = true; e.deadAt = G.t; sparks(e.x, e.y, 6, '#5FB14A', e.team ? '#B07FE0' : '#FCCC3C', 60); if (e.k === 'rider') arMinion('smage', e.team, e.x, e.y, e.ly || 0);
   const kt = 1 - e.team, big = e.lord ? 12 : e.siege ? 3 : 1;
   for (const p of arAll()) if (p.team === kt && !p.dead && Math.hypot(p.x - e.x, p.y - e.y) < 320) { const n = (p.id === by ? 3 : 2) * big; if (p.local) arXp(n); else arSend({t: 'xp', to: p.id, n}); } }
-function arXp(n) { for (let i = 0; i < n; i++) G.drops.push({x: G.x + (Math.random() - 0.5) * 24, y: G.y + (Math.random() - 0.5) * 18, pull: true}); }
+function arXp(n) { if ((G.lvl || 1) >= 15) return; for (let i = 0; i < n; i++) G.drops.push({x: G.x + (Math.random() - 0.5) * 24, y: G.y + (Math.random() - 0.5) * 18, pull: true}); }
 function arStructHit(s, d, from) { if (!s || s.dead || AR.over || !arVuln(s)) return;
   if (from) { const atk = 1 - s.team, guarded = G.en.some(e => e.lane && !e.dead && e.team === atk && Math.hypot(e.x - s.x, e.y - s.y) < 150); if (!guarded) d *= 0.35; }
-  s.hp -= d; s.hit = 0.15; if (s.hp > 0) return; s.hp = 0; s.dead = true;
+  s.hp -= d; s.hit = 0.15; if (from) s.lastBy = from; if (s.hp > 0) return; s.hp = 0; s.dead = true; from = from || s.lastBy;
   fx({k: 'boom', x: s.x, y: s.y - 10, r: 50, t: 0.6, t0: 0.6, col: TEAMRGB[s.team]}); sparks(s.x, s.y - 20, 20, '#9C9A92', '#FFF1B8', 120);
   for (const p of arAll()) if (p.team !== s.team && !p.dead && Math.hypot(p.x - s.x, p.y - s.y) < 380) { if (p.local) arXp(14); else arSend({t: 'xp', to: p.id, n: 14}); }
   if (s.kind === 'base') return arFinish(1 - s.team, `${TEAMN[s.team]}'s base was destroyed`);
-  arBroadcastFeed(`${TEAMN[1 - s.team]} destroyed a ${TEAMN[s.team]} TOWER`); arSnap(true); }
+  if (from) arStat(from).tw++; arBroadcastFeed(`${TEAMN[1 - s.team]} destroyed a ${TEAMN[s.team]} TOWER`); arSnap(true); }
+const TW = {turret: {R: 140, cd: 1.1}, sniper: {R: 210, cd: 2.6}, cannon: {R: 165, cd: 2.8}, base: {R: 165, cd: 1.2}};
+const arRange = s => TW[s.kind === 'base' ? 'base' : s.tw].R;
+function arTowerHit(s, tg, pct, minionPct) { if (!tg || AR.over) return; const o = tg.o; if (tg.kind === 'm') { if (!o.dead) arDamage(tg, Math.max(40, o.max * minionPct), null); return; }
+  if (o.dead) return; if (o.local) hurtMe(M().max * pct, null, true); else arSend({t: 'hit', to: o.id, pct, mon: 1, tw: 1}); }
+function arShotFx(k, x1, y1, x2, y2, t, col) { fx({k: 'torb', o: k, x: x1, y: y1, x2, y2, t, t0: t, col}); }
 function arTowerTick(s, dt) { if (s.dead) return; s.cd -= dt; s.hit = Math.max(0, (s.hit || 0) - dt); if (s.focusT > 0) s.focusT -= dt;
-  const R = s.kind === 'base' ? AR_RULES.baseRange : AR_RULES.towerRange; if (s.cd > 0) return;
-  const L = arEnemiesOf(s.team, s.x, s.y, R, true); if (!L.length) { s.streak = 0; s.lastT = null; return; }
+  for (const q of s.pend || []) { q.t -= dt; if (q.t <= 0) q.fn(); } if (s.pend) s.pend = s.pend.filter(q => q.t > 0);
+  const kind = s.kind === 'base' ? 'base' : s.tw, R = TW[kind].R, top = s.y - (kind === 'cannon' ? 30 : kind === 'base' ? 34 : 60);
+  if (s.burst > 0) { s.bt -= dt; if (s.bt <= 0 && s.btg) { s.bt = 0.08; s.burst--; const g = s.btg; arShotFx('needle', s.x, top, g.o.x, g.o.y - 8, 0.12, TEAMRGB[s.team]); (s.pend = s.pend || []).push({t: 0.12, fn: () => arTowerHit(s, g, 0.075 + s.streak * 0.02, 0.22)}); if (!s.burst) s.aim = null; } return; }
+  const L = arEnemiesOf(s.team, s.x, s.y, R, true); if (!L.length) { s.streak = 0; s.lastT = null; s.tid = null; s.aim = null; return; }
   let tg = s.focusT > 0 ? L.find(q => q.kind === 'p' && q.o.id === s.focus) : null; if (!tg) tg = L.find(q => q.kind === 'm') || L[0];
-  const key = tg.kind === 'p' ? tg.o.id : tg.o; s.streak = key === s.lastT ? s.streak + 1 : 0; s.lastT = key; s.cd = s.kind === 'base' ? 0.75 : 0.95;
-  arBolt(s.x, s.y - (s.kind === 'base' ? 34 : 52), tg.o.x, tg.o.y - 8, s.team ? '#E9D8FF' : '#FFF1B8', 4, 0.22); fx({k: 'pulse', x: tg.o.x, y: tg.o.y, r: 14, t: 0.25, t0: 0.25, col: TEAMRGB[s.team]});
-  if (tg.kind === 'm') arDamage(tg, Math.max(60, tg.o.max * 0.45), null);
-  else { const pct = Math.min(0.45, (s.kind === 'base' ? 0.3 : 0.19) + s.streak * 0.06); if (tg.o.local) hurtMe(M().max * pct, null, true); else arSend({t: 'hit', to: tg.o.id, pct, mon: 1, tw: 1}); } }
-const NEUTRAL = {cobra: {hp: 3600, dmg: 34, at: {x: 0, y: -158}, buff: 'fang', name: 'KING COBRA'}, gcrab: {hp: 4200, dmg: 30, at: {x: 0, y: 150}, buff: 'shell', name: 'GIANT CRAB'}, warden: {hp: 7000, dmg: 50, at: {x: 0, y: -158}, buff: 'lord', name: 'SKELETON LORD'}};
+  s.tid = tg.kind === 'p' ? tg.o.id : null; const a = Math.atan2(tg.o.y - 8 - top, tg.o.x - s.x);
+  if (kind === 'sniper') { if (s.cd <= 0.8) s.aim = a; } if (s.cd > 0) return;
+  const key = tg.kind === 'p' ? tg.o.id : tg.o; s.streak = key === s.lastT ? Math.min(4, s.streak + 1) : 0; s.lastT = key; s.cd = TW[kind].cd;
+  if (kind === 'turret') { // a cone of three bolts
+    for (const da of [-0.22, 0, 0.22]) { const d = Math.hypot(tg.o.x - s.x, tg.o.y - top), ex = s.x + Math.cos(a + da) * d, ey = top + Math.sin(a + da) * d; arShotFx('cone', s.x, top, ex, ey, d / 220, TEAMRGB[s.team]); }
+    const near_ = Math.hypot(tg.o.x - s.x, tg.o.y - s.y) < 80; (s.pend = s.pend || []).push({t: 0.45, fn: () => arTowerHit(s, tg, (near_ ? 0.24 : 0.14) + s.streak * 0.05, 0.4)}); }
+  else if (kind === 'sniper') { s.burst = 4; s.bt = 0; s.btg = tg; }
+  else if (kind === 'cannon') { const x = tg.o.x, y = tg.o.y; fx({k: 'tshell', x: s.x, y: top, x2: x, y2: y, t: 1.1, t0: 1.1, col: TEAMRGB[s.team]});
+    (s.pend = s.pend || []).push({t: 1.1, fn: () => { fx({k: 'boom', x, y, r: 34, t: 0.4, t0: 0.4, col: '255,160,90'}); sparks(x, y, 10, '#FCCC3C', '#E24B4A', 90);
+      for (const q of arEnemiesOf(s.team, x, y, 34, true)) arTowerHit(s, q, 0.22 + s.streak * 0.04, 0.6); }}); }
+  else { const d = Math.hypot(tg.o.x - s.x, tg.o.y - top); arShotFx('mage', s.x, top, tg.o.x, tg.o.y - 8, d / 160, TEAMRGB[s.team]); (s.pend = s.pend || []).push({t: d / 160, fn: () => arTowerHit(s, tg, 0.3 + s.streak * 0.05, 0.6)}); } }
+const NEUTRAL = {cobra: {hp: 2200, dmg: 24, at: {x: 0, y: -158}, buff: 'fang', name: 'KING COBRA'}, gcrab: {hp: 2600, dmg: 22, at: {x: 0, y: 150}, buff: 'shell', name: 'GIANT CRAB'}, warden: {hp: 4500, dmg: 38, at: {x: 0, y: -158}, buff: 'lord', name: 'SKELETON LORD'}};
 const BUFF = {fang: {name: 'COBRA FANG', txt: '+25% damage', col: '#97C459'}, shell: {name: 'CRAB SHELL', txt: 'shield = your health', col: '#85B7EB'}, lord: {name: 'THE LORD', txt: 'joins your next wave', col: '#E6E2D2'}};
 const CAMPS = [{id: 0, x: -470, y: 160, side: 0}, {id: 1, x: 470, y: -160, side: 1}];
 function arNeutralTick(e, dt) { e.flash = Math.max(0, (e.flash || 0) - dt); e.ph = (e.ph || 0) + dt * 5; e.hbT = 3; for (const k of ['stun', 'frozen', 'dance', 'confuse', 'slow']) if (e[k] > 0) e[k] -= dt * (e.camp !== undefined ? 1 : 2);
@@ -4192,8 +4257,8 @@ function arNeutralTick(e, dt) { e.flash = Math.max(0, (e.flash || 0) - dt); e.ph
   if (!small && e.slamT <= 0) { e.slamT = 6; const c = e.k === 'cobra' ? '151,196,89' : e.k === 'warden' ? '230,220,200' : '133,183,235'; fx({k: 'pulse', x: e.x, y: e.y, r: 60, t: 0.5, t0: 0.5, col: c}); fx({k: 'boom', x: e.x, y: e.y, r: 34, t: 0.4, t0: 0.4, col: c});
     for (const p of arAll()) if (!p.dead && Math.hypot(p.x - e.x, p.y - e.y) < 60) arDamage({o: p, kind: 'p'}, e.mdmg * 1.4, null); } }
 function arSpawnNeutral(k, x, y, o) { const N = NEUTRAL[k], at = N ? N.at : {x, y}, e = arSpawn(k, at.x, at.y, {neutral: 1}); e.neutral = 1; e.home = {x: at.x, y: at.y}; e.acd = 1; e.slamT = 4; e.noDrop = 1; e.boss = false; e.team = 2;
-  if (N) { e.hp = e.max = Math.round(N.hp * (1 + AR.t / 600)); e.mdmg = N.dmg * (1 + AR.t / 500); arBroadcastFeed(`${N.name} has appeared`); } else Object.assign(e, o); return e; }
-function arSpawnCamp(C) { const L = [['bsnake', -14, 0], ['bsnake', 14, 0], ['imp', 0, 12]]; for (const [k, dx, dy] of L) { const e = arSpawnNeutral(k, C.x + dx, C.y + dy); e.home = {x: C.x + dx, y: C.y + dy}; e.camp = C.id; e.hp = e.max = Math.round(320 * (1 + AR.t / 300)); e.mdmg = 14 * (1 + AR.t / 400); } }
+  if (N) { e.hp = e.max = Math.round(N.hp * (1 + AR.t / 900)); e.mdmg = N.dmg * (1 + AR.t / 700); arBroadcastFeed(`${N.name} has appeared`); } else Object.assign(e, o); return e; }
+function arSpawnCamp(C) { const L = [['bsnake', -14, 0], ['bsnake', 14, 0], ['imp', 0, 12]]; for (const [k, dx, dy] of L) { const e = arSpawnNeutral(k, C.x + dx, C.y + dy); e.home = {x: C.x + dx, y: C.y + dy}; e.camp = C.id; e.hp = e.max = Math.round(190 * (1 + AR.t / 300)); e.mdmg = 9 * (1 + AR.t / 400); } }
 function arNeutralDie(e, by) { if (e.dead) return; e.dead = true; e.deadAt = G.t; sparks(e.x, e.y, 24, '#5FB14A', '#FFF1B8', 120); const N = NEUTRAL[e.k];
   const p = arAll().find(q => q.id === by), team = p ? p.team : null;
   if (e.camp !== undefined) { if (team !== null) for (const q of arAll()) if (q.team === team && !q.dead && Math.hypot(q.x - e.x, q.y - e.y) < 260) { const n = q.id === by ? 6 : 4; if (q.local) arXp(n); else arSend({t: 'xp', to: q.id, n}); } return; }
@@ -4204,7 +4269,8 @@ function arNeutralDie(e, by) { if (e.dead) return; e.dead = true; e.deadAt = G.t
   if (by === AR.id) arGotBuff(N.buff); else arSend({t: 'buff', to: by, k: N.buff});
   arBroadcastFeed(`${p.name || '?'} (${TEAMN[team]}) slew the ${N.name}: ${BUFF[N.buff].name}`); }
 function arGotBuff(k) { if (k === 'fang') AR.fangT = 90; if (k === 'shell') { AR.shellT = 60; const m = M(); m.shield = Math.max(m.shield || 0, m.max); } toast(`${BUFF[k].name}: ${BUFF[k].txt.toUpperCase()}`); sfx('level'); }
-function arFinish(win, why) { if (AR.over) return; const m = {t: 'end', win, why}; arSend(m); arEnd(win, why); }
+function arStat(pid) { AR.stat = AR.stat || {}; return AR.stat[pid] || (AR.stat[pid] = {ko: 0, dn: 0, tw: 0, lv: 1}); }
+function arFinish(win, why) { if (AR.over) return; if (G) arStat(AR.id).lv = G.lvl; for (const r of Object.values(AR.R)) arStat(r.id).lv = r.lvl || 1; const m = {t: 'end', win, why, st: AR.stat}; arSend(m); arEnd(win, why, AR.stat); }
 function arBroadcastFeed(s) { arFeed(s); arSend({t: 'fx', k: 'feed', s}); }
 function arHostTick(dt) {
   AR.t += dt;
@@ -4213,28 +4279,26 @@ function arHostTick(dt) {
   for (const k of ['cobra', 'gcrab', 'warden']) { if (G.en.some(e => e.k === k && e.neutral && !e.dead)) continue; AR.nT[k] -= dt; if (AR.nT[k] <= 0) { AR.nT[k] = 1e9; arSpawnNeutral(k); } }
   for (const C of CAMPS) { if (G.en.some(e => e.camp === C.id && !e.dead)) { C.t = 70; continue; } C.t = (C.t === undefined ? 30 : C.t) - dt; if (C.t <= 0) { C.t = 70; arSpawnCamp(C); } } AR.waveT -= dt; if (AR.waveT <= 0) { AR.waveT = AR_RULES.waveEvery; arWave(); }
   for (const s of AR.S) arTowerTick(s, dt);
-  if (AR.t >= AR_RULES.matchSecs) { const up = t => AR.S.filter(s => s.team === t && !s.dead).length, a = up(0), b = up(1);
-    if (a !== b) arFinish(a > b ? 0 : 1, 'Time is up: more towers standing'); else if (AR.kills[0] !== AR.kills[1]) arFinish(AR.kills[0] > AR.kills[1] ? 0 : 1, 'Time is up: more takedowns'); else arFinish(null, 'Time is up'); }
   AR.snapT -= dt; if (AR.snapT <= 0) { AR.snapT = 0.1; arSnap(); } }
 function arSnap(now) { if (!AR.host || !AR.on) return; const mons = [];
-  for (const e of G.en) { if (e.dead || !e.nid) continue; mons.push([e.nid, e.k, Math.round(e.x), Math.round(e.y), Math.round(e.hp), Math.round(e.max), e.face < 0 ? -1 : 1, (e.frozen > 0 ? 1 : 0) | (e.stun > 0 ? 2 : 0) | (e.burn > 0 ? 4 : 0) | (e.dance > 0 ? 8 : 0) | (e.poison > 0 ? 16 : 0), e.team === undefined ? -1 : e.team, e.neutral ? 1 : 0]); if (mons.length >= 160) break; }
-  arSend({t: 'w', m: mons, S: AR.S.map(s => [Math.round(s.hp), s.dead ? 1 : 0, s.hit > 0 ? 1 : 0]), kl: AR.kills, clk: +G.clock.toFixed(1), n: G.night ? 1 : 0, at: Math.round(AR.t), wt: Math.round(AR.waveT)}); }
+  for (const e of G.en) { if (e.dead || !e.nid) continue; mons.push([e.nid, e.k, Math.round(e.x), Math.round(e.y), Math.round(e.hp), Math.round(e.max), e.face < 0 ? -1 : 1, (e.frozen > 0 ? 1 : 0) | (e.stun > 0 ? 2 : 0) | (e.burn > 0 ? 4 : 0) | (e.dance > 0 ? 8 : 0) | (e.poison > 0 ? 16 : 0) | (e.lunge > 0 ? 32 : 0), e.team === undefined ? -1 : e.team, e.neutral ? 1 : 0]); if (mons.length >= 160) break; }
+  arSend({t: 'w', m: mons, S: AR.S.map(s => [Math.round(s.hp), s.dead ? 1 : 0, s.hit > 0 ? 1 : 0, s.tid || '', s.aim == null ? null : +s.aim.toFixed(2)]), kl: AR.kills, clk: +G.clock.toFixed(1), n: G.night ? 1 : 0, at: Math.round(AR.t), wt: Math.round(AR.waveT)}); }
 
 /* ---------- what everyone else sees from the host ---------- */
 function arWorld(m) { const seen = new Set();
   for (const [id, k, x, y, hp, max, f, fl, team, neu] of m.m) { seen.add(id); let e = AR.nm[id];
     if (!e || (e.dead && G.t - (e.deadAt || 0) > 1.5)) { if (e && e.dead) { e.dead = false; if (!G.en.includes(e)) G.en.push(e); } else { if (!EN[k]) continue; e = arSpawn(k, x, y, {net: 1, nid: id}); AR.nm[id] = e; } e.x = x; e.y = y; }
-    if (e.dead) continue; e.tx = x; e.ty = y; e.hp = hp; e.max = max; e.face = f; e.frozen = fl & 1 ? 0.3 : 0; e.stun = fl & 2 ? 0.3 : 0; e.burn = fl & 4 ? 0.3 : 0; e.dance = fl & 8 ? 0.3 : 0; e.poison = fl & 16 ? 0.3 : 0;
+    if (e.dead) continue; e.tx = x; e.ty = y; e.hp = hp; e.max = max; e.face = f; e.frozen = fl & 1 ? 0.3 : 0; e.stun = fl & 2 ? 0.3 : 0; e.burn = fl & 4 ? 0.3 : 0; e.dance = fl & 8 ? 0.3 : 0; e.poison = fl & 16 ? 0.3 : 0; if (fl & 32 && !(e.lunge > 0)) e.lunge = 0.18;
     if (neu) { e.neutral = 1; e.team = 2; e.boss = false; } else if (team >= 0) { e.team = team; e.lane = 1; e.charm = team === AR.team ? 1e9 : 0; } }
   for (const id in AR.nm) if (!seen.has(+id)) { const e = AR.nm[id]; if (!e.dead) { sparks(e.x, e.y, 5, '#5FB14A', '#FFF1B8', 50); e.dead = true; } delete AR.nm[id]; }
   G.en = G.en.filter(e => !e.dead);
-  m.S.forEach((q, i) => { const s = AR.S[i]; if (!s) return; if (q[1] && !s.dead) { sparks(s.x, s.y - 20, 20, '#9C9A92', '#FFF1B8', 120); } s.hp = q[0]; s.dead = !!q[1]; s.hit = q[2] ? 0.12 : s.hit; });
+  m.S.forEach((q, i) => { const s = AR.S[i]; if (!s) return; if (q[1] && !s.dead) { sparks(s.x, s.y - 20, 20, '#9C9A92', '#FFF1B8', 120); } s.hp = q[0]; s.dead = !!q[1]; s.hit = q[2] ? 0.12 : s.hit; s.tid = q[3] || null; s.aim = q[4]; });
   AR.kills = m.kl; AR.t = m.at; AR.waveT = m.wt;
   if (!!m.n === G.night) { if (Math.abs(G.clock - m.clk) > 1.5) G.clock = m.clk; } else G.clock = (G.night ? NIGHT : DAY) - 0.05; }
 
 /* ---------- other players ---------- */
 function arState(m) { if (!AR.on) return; const r = AR.R[m.from]; if (!r) return; r.tx = m.x; r.ty = m.y; if (!r.seen) { r.x = m.x; r.y = m.y; } r.seen = G.t;
-  Object.assign(r, {face: m.f, rat: !!m.rt, hid: m.h, hp: m.hp, max: m.mx, dead: !!m.dd, stealth: !!m.st, bush: !!m.bu, air: !!m.ai, fly: !!m.fy, walk: m.w, fort: !!m.fo, inv: !!m.iv, lvl: m.lv || 1, bf: m.bf || 0, ks: m.ks || {}, aim: m.ai || 0, mv: !!m.mv}); arProxy(r); }
+  Object.assign(r, {face: m.f, rat: !!m.rt, hid: m.h, hp: m.hp, max: m.mx, dead: !!m.dd, stealth: !!m.st, bush: !!m.bu, air: !!m.ai, fly: !!m.fy, walk: m.w, fort: !!m.fo, inv: !!m.iv, lvl: m.lv || 1, al: m.al || [], wt: m.wt || 0, bf: m.bf || 0, hop: m.hop || 0, flT: m.fl || 0, ks: m.ks || {}, aim: m.ai || 0, mv: !!m.mv}); arProxy(r); }
 function arProxy(r) { if (r.team === AR.team) return; let p = r.proxy; const d = Math.hypot(r.x - G.x, r.y - G.y); const want = !r.dead && !(r.stealth && d > 60) && !(r.bush && d > 44);
   if (want && (!p || (p.dead && !(p.deadAt && G.t - p.deadAt < 2.5)))) { p = arSpawn('rplayer', r.x, r.y, {pid: r.id}); r.proxy = p; } if (p && !want) p.dead = true; if (p && !p.dead) { p.hp = r.hp; p.max = r.max; } }
 function arDeep(o, d) { const out = {}; let n = 0; for (const k in o) { const v = o[k]; if (v == null) continue; const t = typeof v;
@@ -4242,7 +4306,7 @@ function arDeep(o, d) { const out = {}; let n = 0; for (const k in o) { const v 
     else if (Array.isArray(v)) { if (v.length <= 12 && v.every(q => typeof q === 'number')) out[k] = v.map(q => Math.round(q * 10) / 10); else continue; }
     else if (t === 'object' && d > 0 && v !== G && !(v instanceof Set) && !(v instanceof Map) && !v.getContext && !v.naturalWidth) out[k] = arDeep(v, d - 1); else continue;
     if (++n > 40) break; } return out; }
-function arSendState() { const m = M(); arSend({t: 's', ks: arDeep(m.s, 2), ai: +(G.aimF || 0).toFixed(2), mv: G.moving ? 1 : 0, hop: Math.round(G.hop || 0), x: Math.round(G.x), y: Math.round(G.y), f: G.face < 0 ? -1 : 1, rt: isRat() ? 1 : 0, h: m.h.id, hp: Math.round(Math.max(0, m.hp)), mx: Math.round(m.max), dd: AR.deadT > 0 ? 1 : 0, st: G.stealth > 0 && AR.revealT <= 0 && !m.s.praying ? 1 : 0, bu: G.inBush ? 1 : 0, ai: G.air > 0 ? 1 : 0, fy: G.flyT > 0 ? 1 : 0, fo: G.fort ? 1 : 0, iv: G.inv > 0 ? 1 : 0, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0), lv: G.lvl, w: Math.round((G.walk || 0) * 10) / 10}); }
+function arSendState() { const m = M(); arSend({t: 's', wt: G.hut && G.hut.kind === 'watch' ? [Math.round(G.hut.x), Math.round(G.hut.y), +(G.hut.hp === undefined ? 1 : Math.max(0, G.hut.hp / G.hut.mhp)).toFixed(2)] : 0, ks: arDeep(m.s, 2), ai: +(G.aimF || 0).toFixed(2), mv: G.moving ? 1 : 0, hop: (G.air > 0 ? Math.round(Math.sin((1 - G.air / G.airMax) * Math.PI) * G.airH) : 0) + (G.flyT > 0 ? Math.round(9 + Math.sin(T * 4) * 2) : 0), fl: G.flyT > 0 ? +G.flyT.toFixed(1) : 0, ar: G.air > 0 ? 1 : 0, x: Math.round(G.x), y: Math.round(G.y), f: G.face < 0 ? -1 : 1, rt: isRat() ? 1 : 0, h: m.h.id, hp: Math.round(Math.max(0, m.hp)), mx: Math.round(m.max), dd: AR.deadT > 0 ? 1 : 0, st: G.stealth > 0 && AR.revealT <= 0 && !m.s.praying && !m.s.dis ? 1 : 0, al: G.allies.filter(a => a.life > 0).slice(0, 8).map(a => [a.kind, Math.round(a.x), Math.round(a.y), (a.face || 1) < 0 ? -1 : 1]), bu: G.inBush ? 1 : 0, ai: G.air > 0 ? 1 : 0, fy: G.flyT > 0 ? 1 : 0, fo: G.fort ? 1 : 0, iv: G.inv > 0 ? 1 : 0, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0), lv: G.lvl, w: Math.round((G.walk || 0) * 10) / 10}); }
 function arGotHit(m) { if (!AR.on || AR.deadT > 0) return; let d = m.pct ? M().max * m.pct : m.d; if (!(d > 0)) return;
   if (!m.mon) { // another player hit me: never more than a slice of my health per second, so fights last
     const mx = M().max, room = Math.max(0, mx * AR_RULES.capBurst - AR.pb); d = Math.min(d, room); if (d <= 0) return; AR.pb += d;
@@ -4251,26 +4315,26 @@ function arGotHit(m) { if (!AR.on || AR.deadT > 0) return; let d = m.pct ? M().m
   else if (m.tw) { AR.hurtBy = {tower: 1, t: 1}; arWord('TOWER -' + Math.round(d), G.x, G.y - 40, '#FF9A6A'); }
   const inv = G.inv; if (inv > 0 && inv <= (AR.invLeft || 0) + 0.02) G.inv = 0; hurtMe(d, null, !!m.tw); if (G.inv > 0) { G.inv = Math.min(G.inv, 0.12); AR.invLeft = G.inv; } }
 function arGotCC(m) { if (!AR.on || AR.deadT > 0 || G.fort || G.inv > 1) return; // stuns never last more than 1s on a player, and after one you can't be stunned again for 1.6s
-  const st = Math.max(m.stun || 0, m.frozen || 0, m.dance || 0); if (st > 0 && AR.ccImm <= 0) { const t = Math.min(1, st); G.lock = Math.max(G.lock || 0, t); AR.ccImm = t + 1.6; arWord(m.frozen ? 'FROZEN' : 'STUNNED', G.x, G.y - 44, '#85B7EB'); }
+  const st = Math.max(m.stun || 0, m.frozen || 0, m.dance || 0); if (st > 0 && AR.ccImm <= 0) { const t = Math.min(1, st); G.lock = Math.max(G.lock || 0, t); AR.ccImm = t + 1.6; arWord(m.charm ? 'CHARMED' : m.frozen ? 'FROZEN' : 'STUNNED', G.x, G.y - 44, m.charm ? '#FF7AA0' : '#85B7EB'); }
   if (m.slow > 0 || m.confuse > 0 || m.blind > 0) AR.slowT = Math.max(AR.slowT, Math.min(2, Math.max(m.slow || 0, (m.confuse || 0) * 0.5, (m.blind || 0) * 0.5)));
   if (m.px || m.py) { const l = Math.hypot(m.px, m.py), room = Math.max(0, 160 - AR.pushB), k = l > 0 ? Math.min(1, Math.min(60, room) / l) : 0; if (k > 0) { tryMove(G, m.px * k, m.py * k, G.air > 0); AR.pushB += l * k; } } }
-function arDied(m) { const who = m.from === AR.id ? AR.me.name : (AR.R[m.from] || {}).name || '?', killer = m.killer === AR.id ? AR.me.name : m.killer && AR.R[m.killer] ? AR.R[m.killer].name : null;
+function arDied(m) { if (AR.host) { arStat(m.from).dn++; if (m.killer && m.killer !== m.from) arStat(m.killer).ko++; } const who = m.from === AR.id ? AR.me.name : (AR.R[m.from] || {}).name || '?', killer = m.killer === AR.id ? AR.me.name : m.killer && AR.R[m.killer] ? AR.R[m.killer].name : null;
   arFeed(killer ? `${killer} took down ${who}` : `${who} fell`); if (m.killer === AR.id && m.from !== AR.id) { arXp(10); word('TAKEDOWN', G.x, G.y - 34, '#F09595'); sfx('bigkill'); }
   if (AR.host) { const vt = m.from === AR.id ? AR.team : (AR.R[m.from] || {}).team; if (vt !== undefined) AR.kills[1 - vt]++; } }
 function arFeed(s) { AR.feed.unshift({s, t: 6}); AR.feed.length = Math.min(AR.feed.length, 5); }
 
 /* ---------- effects: everything I make is sent to the others, so they see my attacks ---------- */
-const FX_SEND = {boom: 1, pulse: 1, swipe: 1, spin: 1, beam2: 1, zap: 1, claw: 1, puff: 1, kick: 1, hkick: 1, shards: 1, fall: 1, muz: 1, ting: 1, word: 1, tbolt: 1, p: 1};
+const FX_SEND = {boom: 1, pulse: 1, swipe: 1, spin: 1, beam2: 1, zap: 1, claw: 1, puff: 1, kick: 1, hkick: 1, shards: 1, fall: 1, muz: 1, ting: 1, word: 1, tbolt: 1, torb: 1, tshell: 1, p: 1};
 function arPlain(o, max) { const out = {}; let n = 0; for (const k in o) { if (k[0] === '_' && k[1] === '_') continue; const v = o[k]; if (typeof v === 'number') out[k] = Math.round(v * 100) / 100; else if (typeof v === 'string' && v.length < 60) out[k] = v; else if (typeof v === 'boolean') out[k] = v; else continue; if (++n > (max || 30)) break; } return out; }
 { const f0 = fx; fx = function (o) { const r = f0(o); if (AR.on && !AR.inNet && o && FX_SEND[o.k] && AR.fxq.length < 70 && (o.k !== 'p' || Math.random() < 0.3) && Math.abs(o.x - G.x) < 520 && Math.abs(o.y - G.y) < 360) AR.fxq.push(arPlain(o)); return r; }; }
 { const s0 = strike; strike = function (x, y, r, delay, dmg, o) { const res = s0(x, y, r, delay, dmg, o); if (AR.on && !AR.inNet && !(o && o.enemy)) AR.fxq.push({k: '_strike', x: Math.round(x), y: Math.round(y), r: Math.round(r), t: +delay.toFixed(2), col: (o && o.col) || '255,200,90'}); return res; }; }
 { const sh = shot; shot = function (o) { const s = sh(o); if (AR.on && !AR.inNet && !o.ghost && AR.fxq.length < 70) { const h = M().h; AR.fxq.push({k: '_shot', x: Math.round(s.x), y: Math.round(s.y), a: +s.a.toFixed(3), sp: Math.round(s.spd), l: +s.life.toFixed(2), s: s.spr || '', sc: s.sc || 1, r: Math.min(14, s.r || 3), c: h.col || '#FFF1B8', lob: s.lob ? 1 : 0, tx: s.tx, ty: s.ty, du: s.dur}); } return s; }; }
-const ZSKIP = {arworld: 1};
+const ZSKIP = {arworld: 1}, GROUNDZ = {rink: 1, puddle: 1, stone: 1, magma: 1, bush: 1};
 function arZones() { // send my new zones, and keep their position, size and life up to date
-  for (const z of G.zones) { if (z.ghost || ZSKIP[z.k] || z.perm || !ZONE[z.k] || !ZONE[z.k].draw) continue; if (!z.__id) { z.__id = AR.zid++; z.__s = ''; }
+  for (const z of G.zones) { if (z.ghost || ZSKIP[z.k] || z.perm || !((ZONE[z.k] && ZONE[z.k].draw) || GROUNDZ[z.k])) continue; if (!z.__id) { z.__id = AR.zid++; z.__s = ''; }
     const p = arPlain(z, 24), q = Object.assign({}, p); delete q.life; delete q.age; delete q.tk; const key = JSON.stringify(q); if (key === z.__s && G.t - (z.__st || 0) < 0.4) continue; z.__s = key; z.__st = G.t; p.k = z.k; p.id = z.__id; AR.zq.push(p); if (AR.zq.length > 24) break; } }
 function arGhostZone(from, p) { const key = from + ':' + p.id; let z = AR.gz[key]; if (!z || z.life <= 0) { z = Object.assign({}, p, {ghost: 1, from}); AR.gz[key] = z; G.zones.push(z); } else Object.assign(z, p); z.seenT = G.t; }
-function arGhostShot(m) { const o = {x: m.x, y: m.y, a: m.a, spd: m.sp, life: m.l, sc: m.sc, r: m.r || 3, dmg: 0, pierce: 999, ghost: true}; if (m.s) o.spr = m.s; else { const c = m.c; o.draw = b => { const x = Math.round(b.x), y = Math.round(b.y - (b.hgt || 0)), rr = Math.max(2, Math.min(9, b.r)); ell(x, y, rr + 2, 'rgba(255,255,255,0.18)', null); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 1, 2, 2); }; }
+function arGhostShot(m) { const o = {x: m.x, y: m.y, a: m.a, spd: m.sp, life: m.l, sc: m.sc, r: m.r || 3, dmg: 0, pierce: 999, net: true}; if (m.s) o.spr = m.s; else { const c = m.c; o.draw = b => { const x = Math.round(b.x), y = Math.round(b.y - (b.hgt || 0)), rr = Math.max(2, Math.min(9, b.r)); ell(x, y, rr + 2, 'rgba(255,255,255,0.18)', null); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(x - 1, y - 1, 2, 2); }; }
   if (m.lob && m.tx !== undefined) { lob(m.tx, m.ty, m.du || 0.6, {dmg: 0, ghost: true, sx: m.x, sy: m.y, x: m.x, y: m.y, draw: o.draw, spr: o.spr}); return; } shot(o); }
 function arFx(m) { AR.inNet = true; try {
     if (m.k === 'feed') arFeed(m.s);
@@ -4282,7 +4346,12 @@ function arWrapZones() { for (const k in ZONE) { const Z = ZONE[k]; if (!Z || Z.
     if (tk) Z.tick = function (z, dt) { if (z.ghost) { if (G.t - (z.seenT || 0) > 0.6) z.life = 0; return; } return tk.call(this, z, dt); };
     if (en) Z.end = function (z) { if (z.ghost) return; return en.call(this, z); };
     if (dr) Z.draw = function (z) { if (!z.ghost) return dr.call(this, z); const r = AR.R[z.from]; if (!r) return; const sx = G.x, sy = G.y, sf = G.face; G.x = r.x; G.y = r.y; G.face = r.face; try { dr.call(this, z); } catch (e) {} finally { G.x = sx; G.y = sy; G.face = sf; } }; } }
-{ const df = drawFx; drawFx = function (f) { if (f.k === 'tbolt') { const k = 1 - f.t / f.t0, x = f.x + (f.x2 - f.x) * Math.min(1, k * 1.6), y = f.y + (f.y2 - f.y) * Math.min(1, k * 1.6); ctx.strokeStyle = f.col; ctx.globalAlpha = 0.5; ctx.lineWidth = f.w + 2; ctx.beginPath(); ctx.moveTo(Math.round(f.x), Math.round(f.y)); ctx.lineTo(Math.round(x), Math.round(y)); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = f.w; ctx.strokeStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(Math.round(f.x + (x - f.x) * 0.6), Math.round(f.y + (y - f.y) * 0.6)); ctx.lineTo(Math.round(x), Math.round(y)); ctx.stroke(); ctx.fillStyle = f.col; ctx.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); return; }
+{ const df = drawFx; drawFx = function (f) {
+    if (f.k === 'torb' || f.k === 'tshell') { const k = 1 - f.t / f.t0, x = f.x + (f.x2 - f.x) * k, y = f.y + (f.y2 - f.y) * k - (f.k === 'tshell' ? Math.sin(k * Math.PI) * 70 : 0), c = f.col;
+      if (f.k === 'tshell') { ctx.strokeStyle = `rgba(226,75,74,${(0.35 + 0.5 * k).toFixed(2)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(Math.round(f.x2), Math.round(f.y2), 34, 24, 0, 0, TAU); ctx.stroke(); ctx.fillStyle = `rgba(226,75,74,${(0.1 + 0.15 * k).toFixed(2)})`; ctx.fill(); ctx.fillStyle = '#2B2B2B'; ctx.beginPath(); ctx.arc(Math.round(x), Math.round(y), 4, 0, TAU); ctx.fill(); ctx.fillStyle = '#FCCC3C'; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 3, 2, 2); return; }
+      if (f.o === 'needle') { const a = Math.atan2(f.y2 - f.y, f.x2 - f.x); ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a); ctx.fillStyle = '#FF5A8A'; ctx.fillRect(-5, -1, 10, 2); ctx.fillStyle = '#FFF1F6'; ctx.fillRect(2, -1, 3, 2); ctx.restore(); return; }
+      const r = f.o === 'cone' ? 3 : 4; ell(x, y, r + 3, `rgba(${c},0.35)`, null); ctx.fillStyle = `rgb(${c})`; ctx.beginPath(); ctx.arc(Math.round(x), Math.round(y), r, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2); return; }
+    if (f.k === 'tbolt') { const k = 1 - f.t / f.t0, x = f.x + (f.x2 - f.x) * Math.min(1, k * 1.6), y = f.y + (f.y2 - f.y) * Math.min(1, k * 1.6); ctx.strokeStyle = f.col; ctx.globalAlpha = 0.5; ctx.lineWidth = f.w + 2; ctx.beginPath(); ctx.moveTo(Math.round(f.x), Math.round(f.y)); ctx.lineTo(Math.round(x), Math.round(y)); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = f.w; ctx.strokeStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(Math.round(f.x + (x - f.x) * 0.6), Math.round(f.y + (y - f.y) * 0.6)); ctx.lineTo(Math.round(x), Math.round(y)); ctx.stroke(); ctx.fillStyle = f.col; ctx.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4); return; }
     if (f.net) { try { return df(f); } catch (e) { return; } } return df(f); }; }
 
 /* ---------- my own side ---------- */
@@ -4290,8 +4359,11 @@ function arTick(dt) { if (!AR.on || AR.over) return;
   if (AR.host) arHostTick(dt);
   for (const r of Object.values(AR.R)) { const k = Math.min(1, dt * 12); r.x += (r.tx - r.x) * k; r.y += (r.ty - r.y) * k; if (r.hitMeT > 0) r.hitMeT -= dt; arProxy(r); const p = r.proxy;
     if (p && !p.dead) { if (p.ax !== undefined) { const dx = p.x - p.ax, dy = p.y - p.ay; if (Math.abs(dx) + Math.abs(dy) > 0.3) { const c = AR.q.cc[r.id] || (AR.q.cc[r.id] = {}); c.px = (c.px || 0) + dx; c.py = (c.py || 0) + dy; } }
+      if (p.charm > 0) { const c = AR.q.cc[r.id] || (AR.q.cc[r.id] = {}); c.dance = Math.max(c.dance || 0, Math.min(1, p.charm)); c.charm = 1; p.charm = 0; p.mirrorMade = false; }
       for (const f of ['stun', 'frozen', 'dance', 'confuse', 'slow', 'blind']) if (p[f] > 0) { const c = AR.q.cc[r.id] || (AR.q.cc[r.id] = {}); c[f] = Math.max(c[f] || 0, p[f]); p[f] = 0; }
       p.x = p.ax = r.x; p.y = p.ay = r.y; p.face = r.face; } }
+  for (const e of G.en) { if (e.lunge > 0 && e.net) e.lunge -= dt;
+    if ((e.lane && e.team !== AR.team || e.neutral) && e.charm > 0 && e.charm < 1e8) { const st = Math.min(e.neutral ? 1 : 2, e.charm); e.charm = 0; e.mirrorMade = false; if (AR.host || !e.net) e.stun = Math.max(e.stun || 0, st); else toHost({t: 'hs', id: e.nid, s: {stun: st}}); } }
   if (!AR.host) for (const e of G.en) if (e.net && e.tx !== undefined) { const k = Math.min(1, dt * 10); const dx = e.tx - e.x; e.x += dx * k; e.y += (e.ty - e.y) * k; e.ph = (e.ph || 0) + dt * 6; if (Math.abs(dx) > 0.3) e.face = dx > 0 ? 1 : -1; }
   // the enemy towers and base I can hit right now
   for (const s of AR.S) { if (s.team === AR.team) continue; const want = arVuln(s); let p = AR.sp[s.id];
@@ -4314,12 +4386,13 @@ function arFlush() { const q = AR.q; const h = Object.entries(q.hm).filter(([, d
   for (const [pid, d] of Object.entries(q.hp)) if (d > 0) { arSend({t: 'hit', to: pid, d: Math.round(d * 10) / 10}); if (AR.host) arTowerFocus(pid, AR.id); else toHost({t: 'focus', pid}); }
   const hb = Object.entries(q.hb).filter(([, d]) => d > 0).map(([sid, d]) => [+sid, Math.round(d)]); if (hb.length) toHost({t: 'hb', h: hb});
   for (const [pid, c] of Object.entries(q.cc || {})) { if (c.px !== undefined) { c.px = Math.round(c.px); c.py = Math.round(c.py); } arSend(Object.assign({t: 'cc', to: pid}, c)); }
-  AR.q = {hm: {}, hp: {}, hb: {}, cc: {}};
+  const mp = Object.entries(q.mp || {}).filter(([, v]) => Math.abs(v[0]) + Math.abs(v[1]) > 0.5).map(([id, v]) => [+id, Math.round(v[0]), Math.round(v[1])]); if (mp.length) toHost({t: 'hpush', h: mp});
+  AR.q = {hm: {}, hp: {}, hb: {}, cc: {}, mp: {}};
   arZones(); if (AR.fxq.length || AR.zq.length) { arSend({t: 'fx', k: 'v', L: AR.fxq, Z: AR.zq}); AR.fxq = []; AR.zq = []; } }
 function arTowerFocus(pid, attacker) { // a player who hurts an enemy player under that player's tower gets shot by it
   const victim = pid === AR.id ? {x: G.x, y: G.y, team: AR.team} : AR.R[pid]; if (!victim) return;
-  for (const s of AR.S) if (!s.dead && s.team === victim.team && Math.hypot(victim.x - s.x, victim.y - s.y) < AR_RULES.towerRange + 20) { s.focus = attacker; s.focusT = 2.5; } }
-const arRespawn = () => Math.min(18, 5 + (G.lvl || 1) * 0.7);
+  for (const s of AR.S) if (!s.dead && s.team === victim.team && Math.hypot(victim.x - s.x, victim.y - s.y) < arRange(s) + 20) { s.focus = attacker; s.focusT = 2.5; } }
+const arRespawn = () => Math.round(Math.min(32, 5 + AR.t / 40));
 function arMembers(dt) { const b = arBaseOf(AR.team);
   G.team.forEach((q, i) => { if (q.down && !q.__dn) arDownOne(q, i);
     if (q.__dn) { AR.mt[i] -= dt; if (AR.mt[i] <= 0) { q.__dn = false; q.down = false; q.hp = q.max;
@@ -4329,7 +4402,7 @@ function arMembers(dt) { const b = arBaseOf(AR.team);
 function arDownOne(q, i) { q.__dn = true; AR.mt[i] = arRespawn(); const m = {t: 'died', killer: G.t - (AR.lastHitT || -9) < 4 ? AR.lastFrom : null, x: Math.round(G.x), y: Math.round(G.y)}; arSend(m); m.from = AR.id; arDied(m); }
 function arStartDeath() { if (AR.deadT > 0) return; G.team.forEach((q, i) => { q.down = true; if (!q.__dn) arDownOne(q, i); }); AR.deadT = 1; M().down = false; M().hp = 1; toast('ALL YOUR HUNTERS ARE DOWN'); }
 function arStartDeathOld() { if (AR.deadT > 0) return; AR.deadT = Math.min(18, 5 + (G.lvl || 1) * 0.7); G.team.forEach(q => { q.down = true; q.hp = 1; }); M().down = false; const m = {t: 'died', killer: G.t - (AR.lastHitT || -9) < 4 ? AR.lastFrom : null, x: Math.round(G.x), y: Math.round(G.y)}; arSend(m); m.from = AR.id; arDied(m); toast(`DOWN! BACK IN ${Math.ceil(AR.deadT)}s`); }
-function arEnd(win, why) { if (AR.over) return; arVoiceStop(); arChatClose(); $a('#arComms').style.display = 'none'; AR.over = {win, why}; arFlush(); arShowEnd(win, why); }
+function arEnd(win, why, st) { if (AR.over) return; if (st) AR.stat = st; arVoiceStop(); arChatClose(); $a('#arComms').style.display = 'none'; AR.over = {win, why}; arFlush(); arShowEnd(win, why); }
 function arQuit() { arVoiceStop(); $a('#arComms').style.display = 'none'; AR.on = false; AR.over = null; screen = 'title'; if (G) { G.hut = null; G.en = []; } arResetMap(); }
 
 /* ---------- hooks into the game ---------- */
@@ -4343,15 +4416,16 @@ function arQuit() { arVoiceStop(); $a('#arComms').style.display = 'none'; AR.on 
     const i = G.en.indexOf(e); if (i >= 0) G.en.splice(i, 1); e.dead = true; return e; }; }
 { const et = enemyTick; enemyTick = function (e, dt) { if (AR.on && (e.k === 'rplayer' || e.k === 'rbase')) return; if (AR.on && !AR.host && e.net) return; if (AR.on && e.lane) return arMinionTick(e, dt); if (AR.on && e.neutral && AR.host) return arNeutralTick(e, dt); return et(e, dt); }; }
 /* undo the story mode's time scaling on damage I take: the arena has its own rules */
-{ const hm = hurtMe; hurtMe = function (d, src, bullet) { if (!AR.on) return hm(d, src, bullet); if (AR.deadT > 0) return; if (d > 0 && !G.fort && !(G.inv > 0)) AR.revealT = 2; d /= (1 + Math.max(0, (G.lvl || 1) - 10) * 0.03) * (1 + Math.max(0, G.t - 300) / 600); return hm(d, src, bullet); }; }
-{ const h0 = hurt; hurt = function (e, d, o) { if (!AR.on) return h0(e, d, o); if (!(d > 0) || AR.over) return 0; if (AR.fangT > 0) d *= 1.25;
+{ const hm = hurtMe; hurtMe = function (d, src, bullet) { if (!AR.on) return hm(d, src, bullet); if (AR.deadT > 0) return; if (G.hut && G.hut.kind === 'watch') { const hu = G.hut; if (hu.hp === undefined) hu.hp = hu.mhp = Math.round(M().max * 0.7); if (G.inv > 0) return; hu.hp -= d; G.inv = 0.15; G.hurtFx = 0.2; sfx('hit'); arWord('-' + Math.round(d), hu.x, hu.y - 50, '#E6E2D2');
+      if (hu.hp <= 0) { G.hut = null; G.huts = G.huts.filter(h => h !== hu); fx({k: 'boom', x: hu.x, y: hu.y - 20, r: 30, t: 0.4, t0: 0.4, col: '168,112,63'}); sparks(hu.x, hu.y - 20, 18, '#A8703F', '#3B6D11', 120); word('TOWER BROKEN', hu.x, hu.y - 40, '#E24B4A'); sfx('boom'); G.inv = 0.6; } return; } if (d > 0 && !G.fort && !(G.inv > 0)) AR.revealT = 2; d /= (1 + Math.max(0, (G.lvl || 1) - 10) * 0.03) * (1 + Math.max(0, G.t - 300) / 600); return hm(d, src, bullet); }; }
+{ const h0 = hurt; hurt = function (e, d, o) { if (!AR.on) return h0(e, d, o); if (!(d > 0) || AR.over) return 0; if (d >= 900 && (e.neutral || e.lord)) d = e.max * 0.12; if (AR.fangT > 0) d *= 1.25;
     if (e.lane && e.team === AR.team) return 0;
     if (e.k === 'rplayer' || e.k === 'rbase' || (e.net && !AR.host)) { const b = e.hp; const r = h0(e, d, o); const dd = b - Math.max(0, e.hp); if (dd > 0) {
         if (e.k === 'rplayer') { AR.revealT = Math.max(AR.revealT, 1); const v = dd * arPvpK(); AR.q.hp[e.pid] = (AR.q.hp[e.pid] || 0) + v; if (Math.random() < 0.5 || v > 8) arWord(String(Math.max(1, Math.round(v))), e.x + (Math.random() - 0.5) * 12, e.y - 34, '#FFE27A'); }
         else if (e.k === 'rbase') AR.q.hb[e.sid] = (AR.q.hb[e.sid] || 0) + dd; else AR.q.hm[e.nid] = (AR.q.hm[e.nid] || 0) + dd; }
       if (e.k === 'rplayer' || e.k === 'rbase') { e.hp = b; e.dead = false; } else if (e.dead) e.deadAt = G.t; return r; }
     if (e.lane || e.neutral) e.lastBy = AR.id; return h0(e, d, o); }; }
-{ const s0 = status; status = function (e, s) { if (AR.on && e.lane && e.team === AR.team) return; if (AR.on && e.k === 'rplayer') { for (const k of ['stun', 'freeze', 'slow', 'confuse', 'blind']) if (s[k] > 0) e[k === 'freeze' ? 'frozen' : k] = Math.max(e[k === 'freeze' ? 'frozen' : k] || 0, s[k]); return; } if (AR.on && !AR.host && e.net && !AR.inNet && e.nid) { const small = {}; for (const k of ['slow', 'k', 'stun', 'freeze', 'burn', 'poison']) if (s[k] !== undefined) small[k] = s[k]; toHost({t: 'hs', id: e.nid, s: small}); } if (AR.on && (e.k === 'rplayer' || e.k === 'rbase')) return; return s0(e, s); }; }
+{ const s0 = status; status = function (e, s) { if (AR.on && e.lane && e.team === AR.team && !AR.inNet) return; if (AR.on && e.k === 'rplayer') { for (const k of ['stun', 'freeze', 'slow', 'confuse', 'blind']) if (s[k] > 0) e[k === 'freeze' ? 'frozen' : k] = Math.max(e[k === 'freeze' ? 'frozen' : k] || 0, s[k]); return; } if (AR.on && !AR.host && e.net && !AR.inNet && e.nid) { const small = {}; for (const k of ['slow', 'k', 'stun', 'freeze', 'burn', 'poison']) if (s[k] !== undefined) small[k] = s[k]; toHost({t: 'hs', id: e.nid, s: small}); } if (AR.on && (e.k === 'rplayer' || e.k === 'rbase')) return; return s0(e, s); }; }
 { const k0 = kill; kill = function (e, o) { if (AR.on && (e.k === 'rplayer' || e.k === 'rbase')) return; if (AR.on && (e.lane || e.neutral)) { if (AR.host) (e.neutral ? arNeutralDie : arMinionDie)(e, e.lastBy || null); else { e.dead = true; e.deadAt = G.t; } return; } return k0(e, o); }; }
 /* a little faster on the walk back to the lane */
 { for (const h of HUNTERS) { const sp = h.spd; h.spd = function (m) { const v = typeof sp === 'function' ? sp.call(this, m) : 1; if (!AR.on) return v; const b = arBaseOf(AR.team); return (b && Math.abs(G.x - b.x) < 230 ? v * 1.5 : v) * (AR.slowT > 0 ? 0.6 : 1) * (G.gnd === 'w' && !h.sea && !(G.air > 0) ? 1 / 0.7 : 1); }; } }
@@ -4397,47 +4471,64 @@ function arVoiceButtons() { const m = $a('#arMicBtn'), s = $a('#arSpkBtn'); if (
     const li = $a('#arChatLobbyIn'), send = () => { arChatSend(li.value, arChatScope); li.value = ''; }; $a('#arChatSendBtn').onclick = send; window.arLobbySend = send;
     $a('#arChatScope').onclick = () => { arChatScope = arChatScope === 'team' ? 'all' : 'team'; arChatTag(); }; }; setTimeout(go, 0); })();
 
+/* pushes and pulls: never on your own minions or the big monsters; on another screen's minions they are sent to the host */
+{ const p0 = push; push = function (e, a, d) { if (!AR.on) return p0(e, a, d); if (e.lane && e.team === AR.team) return; if (e.neutral && e.camp === undefined) return; if (e.k === 'rbase') return;
+    const x0 = e.x, y0 = e.y; p0(e, a, d); if (!AR.host && e.net && e.nid) { const q = AR.q.mp || (AR.q.mp = {}), c = q[e.nid] || (q[e.nid] = [0, 0]); c[0] += e.x - x0; c[1] += e.y - y0; } else if (AR.host && e.lane) { e.px = e.x; e.py = e.y; } }; }
+{ const K = KIT.mirror, s3 = K.s3; if (s3) K.s3 = function (m, ai) { if (!AR.on) return s3.call(this, m, ai); let t = null, bd = 200; for (const e of G.en) { if (e.dead || e.k === 'rplayer' || e.k === 'rbase' || e.charm > 0 || !(e.lane || e.neutral)) continue; const d = Math.hypot(e.x - G.x, e.y - G.y); if (d < bd) { bd = d; t = e; } }
+    if (!t) { word('NO MONSTER NEAR', G.x, G.y - 26, '#B4B2A9'); return false; } const r = s3.call(this, m, Object.assign({}, ai, {n: t})); if (m.s.dis && m.s.dis.f) { m.s.dis.f.charm = 0; m.s.dis.f.net = 0; } return r; }; }
+/* Luna's tornado: it swallows minions only. Players (and the big monsters) get pulled and nibbled, never eaten, and never count toward its 40 */
+{ const Z = ZONE.tornado, tk = Z.tick; Z.tick = function (z, dt) { if (!AR.on || z.ghost) return tk.call(this, z, dt); const big = G.en.filter(e => !e.dead && (e.k === 'rplayer' || e.neutral || e.lord) && !e.boss); big.forEach(e => e.boss = true);
+    const was = z.done; try { tk.call(this, z, dt); } finally { big.forEach(e => e.boss = false); }
+    if (!was && z.done) for (const e of big) if (e.k === 'rplayer' && Math.hypot(e.x - z.x, e.y - z.y) < z.r + 34) { const l = Math.hypot(z.x - e.x, z.y - e.y); if (l > 2) { e.x += (z.x - e.x) / l * Math.min(l - 2, 60); e.y += (z.y - e.y) / l * Math.min(l - 2, 60); } e.stun = Math.max(e.stun || 0, 1); }
+    if (!z.done) for (const e of big) if (e.k === 'rplayer' && Math.hypot(e.x - z.x, e.y - z.y) < z.r + 50) { const l = Math.hypot(z.x - e.x, z.y - e.y); if (l > 2) { e.x += (z.x - e.x) / l * Math.min(l, 40 * dt); e.y += (z.y - e.y) / l * Math.min(l, 40 * dt); } } }; }
+{ const K = KIT.brine, s2 = K.s2, L2 = K.lab2; Object.defineProperty(K, 'lab2', {get() { return AR.on ? 'HULL' : L2; }, configurable: true}); K.s2 = function (m, ai) { if (!AR.on) return s2.call(this, m, ai); m.shield = Math.max(m.shield || 0, Math.round(m.max * 0.45)); m.s.hull = 5; sparks(G.x, G.y, 14, '#B4B2A9', '#FCCC3C', 90); sfx('ability'); word('IRON HULL', G.x, G.y - 28, '#E6E2D2'); return true; };
+  const tk = K.tick; K.tick = function (m, dt, on, rat) { tk && tk.call(this, m, dt, on, rat); const s = m.s; if (!(s.hull > 0)) return; s.hull -= dt; if (s.hull <= 0 || !(m.shield > 0)) { s.hull = 0; m.shield = 0; if (on) brineChestEnd(m); } };
+  const dr = K.draw; K.draw = function (m, rat, hop) { if (dr) dr.call(this, m, rat, hop); if (!(m.s.hull > 0)) return; ctx.strokeStyle = `rgba(230,226,210,${(0.6 + 0.3 * Math.sin(T * 8)).toFixed(2)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(Math.round(G.x), Math.round(G.y - 2 - (hop || 0)), 15, 19, 0, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(180,178,169,0.18)'; ctx.fill(); }; }
+/* the arena's level cap is 15 */
+{ const pk = pick; pick = function (d) { if (AR.on && !d.kind && (G.lvl || 1) >= 15) return; return pk(d); }; }
 /* ---------- arena-only hero changes ---------- */
 { const K = KIT.bulwark, s1 = K.s1; K.s1 = function (m, ai) { const r = s1.call(this, m, ai); if (AR.on) m.s.mag = Math.min(m.s.mag || 0, 2.5); return r; }; }
 { const K = KIT.shade, s1 = K.s1, atk = K.atk; K.s1 = function (m, ai) { const r = s1.call(this, m, ai); if (AR.on && m.s.ghost > 4) m.s.ghost = 4; return r; };
   K.atk = function (m, dt, rat) { const f0 = m.fireT; const r = atk.call(this, m, dt, rat); if (AR.on && !rat && G.inBush && m.fireT > f0 + 0.5) m.fireT = 2.4; return r; }; }
 /* basic attacks are aimed: with a mouse, a basic attack only goes for an enemy near where you point */
 { for (const h of HUNTERS) { const a = h.atk; if (!a || a.__aim) continue; h.atk = function (m, dt, rat) { AR.aiming = AR.on; try { return a.call(this, m, dt, rat); } finally { AR.aiming = false; } }; h.atk.__aim = true; } }
-{ const nr = near; near = function (range, x, y, skip) { if (!(AR.on && AR.aiming && x === undefined && mouseOn())) return nr(range, x, y, skip);
-    const ma = Math.atan2(mouse.y - Hw / 2, mouse.x - Ww / 2); let best = null, bs = 1e9;
-    for (const e of G.en) { if (e.dead || e.charm > 0 || (skip && skip.has(e))) continue; const d = Math.hypot(e.x - G.x, e.y - G.y); if (d > range + (e.r || 0)) continue; const da = Math.abs(Math.atan2(Math.sin(Math.atan2(e.y - G.y, e.x - G.x) - ma), Math.cos(Math.atan2(e.y - G.y, e.x - G.x) - ma)));
-      if (da > 0.55 && d > 26) continue; const sc = da * 120 + d * 0.3; if (sc < bs) { bs = sc; best = e; } }
+function arLOS(x1, y1, x2, y2) { const d = Math.hypot(x2 - x1, y2 - y1), n = Math.floor(d / 8); for (let i = 1; i < n; i++) { const k = i / n; if (terrAt(x1 + (x2 - x1) * k, y1 + (y2 - y1) * k) === 'W') return false; } return true; }
+{ const nr = near; near = function (range, x, y, skip) { if (!(AR.on && x === undefined)) return nr(range, x, y, skip); if (AR.deadT > 0) return null;
+    // in the arena nobody shoots through the lane walls, and with a mouse basic attacks go where you point
+    const aim = AR.aiming && mouseOn(), ma = aim ? Math.atan2(mouse.y - Hw / 2, mouse.x - Ww / 2) : 0; let best = null, bs = 1e9;
+    for (const e of G.en) { if (e.dead || e.charm > 0 || (skip && skip.has(e))) continue; const d = Math.hypot(e.x - G.x, e.y - G.y); if (d > range) continue; if (!arLOS(G.x, G.y - 4, e.x, e.y - 4)) continue;
+      let sc = d; if (aim) { const ea = Math.atan2(e.y - G.y, e.x - G.x), da = Math.abs(Math.atan2(Math.sin(ea - ma), Math.cos(ea - ma))); if (da > 0.55 && d > 26) continue; sc = da * 120 + d * 0.3; }
+      if (sc < bs) { bs = sc; best = e; } }
     return best; }; }
 
 /* ---------- drawing ---------- */
-function arPlayerSprite(r, x, y) { const h = HUNTERS.find(q => q.id === r.hid) || HUNTERS[0], f = Math.floor((r.walk || 0)) % 4, hop = r.fly ? 10 : 0, foe = r.team !== AR.team;
+function arPlayerSprite(r, x, y) { const h = HUNTERS.find(q => q.id === r.hid) || HUNTERS[0], f = Math.floor((r.walk || 0)) % 4, hop = r.hop || 0, foe = r.team !== AR.team;
   const far = r.stealth && foe && Math.hypot(r.x - G.x, r.y - G.y) > 60; let al = r.stealth ? (far ? 0.14 : 0.45) : (r.bush ? 0.65 : 1); if (r.inv && Math.floor(T * 16) % 2 === 0) al *= 0.6;
-  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(Math.round(x - 7), Math.round(y + 14), 14, 2);
+  const shw = hop ? 4 : 7; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(Math.round(x - shw), Math.round(y + 14), shw * 2, 2);
   ctx.strokeStyle = r.hitMeT > 0 ? `rgba(255,90,90,${(0.6 + 0.4 * Math.sin(T * 20)).toFixed(2)})` : TEAMC[r.team]; ctx.lineWidth = r.hitMeT > 0 ? 2.5 : 1.5; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y + 14), 10, 4, 0, 0, TAU); ctx.stroke();
   if (r.fort) { ctx.fillStyle = `rgba(255,241,184,${(0.18 + 0.08 * Math.sin(T * 8)).toFixed(2)})`; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y - hop), 18, 22, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(255,241,184,0.7)'; ctx.lineWidth = 1; ctx.stroke(); }
-  ctx.globalAlpha = al; if (r.rat) frame(h.rat, f, 32, 32, x, y - hop, r.face < 0); else frame(h.spr, f, 24, 32, x, y - hop, r.face < 0);
-  // the hunter's own effects (breath, shields, auras, ropes...), drawn as if they were here
-  if (h.draw && r.ks) { const sv = {x: G.x, y: G.y, face: G.face, aimF: G.aimF, moving: G.moving}; G.x = x; G.y = y; G.face = r.face; G.aimF = r.aim; G.moving = r.mv;
-    try { h.draw({h, s: r.ks, hp: r.hp, max: r.max, cd1: 1, cd2: 1}, r.rat, hop); } catch (e) {} finally { Object.assign(G, sv); } }
+  // draw the hunter exactly the way the game draws its own player: wings behind, special sprites, effects on top
+  const fm = {h, s: r.ks || {}, hp: r.hp, max: r.max, cd1: 1, cd2: 1, shield: 0}, sv = {x: G.x, y: G.y, face: G.face, aimF: G.aimF, moving: G.moving, flyT: G.flyT, air: G.air, walk: G.walk, stealth: G.stealth, inBush: G.inBush, fort: G.fort};
+  G.x = x; G.y = y; G.face = r.face; G.aimF = r.aim; G.moving = r.mv; G.flyT = r.flT || 0; G.air = r.air ? 0.01 : 0; G.walk = r.walk || 0; G.stealth = 0; G.inBush = false; G.fort = r.fort;
+  try { if (r.wt) { const [hx, hy, lk] = r.wt, im = I.tower; ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(Math.round(hx - 12), Math.round(hy + 12), 24, 3); if (im) ctx.drawImage(im, Math.round(hx - im.width / 2), Math.round(hy + 12 - im.height)); ctx.fillStyle = '#2B2B2B'; ctx.fillRect(Math.round(hx - 11), Math.round(hy + 16), 22, 3); ctx.fillStyle = '#97C459'; ctx.fillRect(Math.round(hx - 10), Math.round(hy + 17), Math.round(20 * lk), 1); }
+    if (h.drawWorld) { ctx.globalAlpha = al; h.drawWorld(fm, true); }
+    ctx.globalAlpha = al; if (!(h.hideMe && h.hideMe(fm))) { const so = h.sprOf && h.sprOf(fm, r.rat); if (h.drawBehind) h.drawBehind(fm, r.rat, hop); ctx.globalAlpha = al;
+      if (r.rat) frame(so || h.rat, r.air || r.flT > 0 ? 1 : f, 32, 32, x, y - hop, r.face < 0); else frame(so || h.spr, r.flT > 0 ? 0 : f, 24, 32, x, y - hop, r.face < 0); }
+    ctx.globalAlpha = al; if (h.draw) h.draw(fm, r.rat, hop); } catch (e) {} finally { Object.assign(G, sv); }
   ctx.globalAlpha = 1;
   if (far) { ctx.globalAlpha = 1; return; } if (r.stealth) { for (let i = 0; i < 3; i++) { const a = T * 3 + i * 2.1; ctx.fillStyle = 'rgba(206,203,246,0.7)'; ctx.fillRect(Math.round(x + Math.cos(a) * 10), Math.round(y - 4 - hop + Math.sin(a) * 12), 1, 1); } txt(foe ? 'SPOTTED' : 'HIDDEN', x, y - 44 - hop, 4, '#CECBF6'); }
   const bw = 24, k = Math.max(0, Math.min(1, r.hp / (r.max || 1))); ctx.fillStyle = '#2B2B2B'; ctx.fillRect(Math.round(x - bw / 2 - 1), Math.round(y - 31 - hop), bw + 2, 5); ctx.fillStyle = foe ? '#E24B4A' : '#97C459'; ctx.fillRect(Math.round(x - bw / 2), Math.round(y - 30 - hop), Math.round(bw * k), 3);
   txt(`${r.lvl || 1} ${r.name}`, x, y - 37 - hop, 5, TEAMC[r.team]); }
-function arTowerArt(s) { const x = Math.round(s.x), y = Math.round(s.y), c = TEAMC[s.team], glow = TEAMRGB[s.team], dark = s.team ? '#3E2E62' : '#6A4A20';
-  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 6, 16, 5, 0, 0, TAU); ctx.fill();
-  if (s.dead) { ctx.fillStyle = '#5A5666'; ctx.fillRect(x - 12, y - 4, 10, 8); ctx.fillStyle = '#6E6A78'; ctx.fillRect(x - 2, y - 2, 12, 7); ctx.fillStyle = '#4A4656'; ctx.fillRect(x + 4, y - 7, 6, 5); ctx.fillStyle = dark; ctx.fillRect(x - 6, y - 6, 3, 3); return; }
-  const fl = s.hit > 0 && Math.floor(T * 30) % 2 === 0;
-  // a stone tower: wider at the bottom, bricks shaded left to right
-  for (let yy = 0; yy < 40; yy++) { const w = 9 - Math.floor(yy / 14), ry = y + 2 - yy; for (let xx = -w; xx < w; xx++) { const row = Math.floor(yy / 5), seam = yy % 5 === 0 || ((xx + w + (row % 2) * 3) % 6 === 0); ctx.fillStyle = fl ? '#FFFFFF' : seam ? '#3E3A4A' : xx < -w + 3 ? '#8E8A9A' : xx > w - 4 ? '#55516A' : '#726E82'; ctx.fillRect(x + xx, ry, 1, 1); } }
-  ctx.fillStyle = fl ? '#fff' : '#4A4656'; ctx.fillRect(x - 10, y - 40, 20, 4); for (let i = -10; i < 10; i += 5) { ctx.fillStyle = fl ? '#fff' : '#6E6A78'; ctx.fillRect(x + i, y - 44, 3, 4); }
-  ctx.fillStyle = c; ctx.fillRect(x - 2, y - 26, 4, 6); ctx.fillStyle = dark; ctx.fillRect(x - 1, y - 25, 2, 5); // window glow
-  // the crystal on top
-  const cy = y - 52 + Math.round(Math.sin(T * 2 + s.id) * 1.5); ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(x, cy, 1, x, cy, 16); g.addColorStop(0, `rgba(${glow},0.55)`); g.addColorStop(1, `rgba(${glow},0)`); ctx.fillStyle = g; ctx.fillRect(x - 16, cy - 16, 32, 32); ctx.restore();
-  ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x, cy - 7); ctx.lineTo(x + 4, cy); ctx.lineTo(x, cy + 6); ctx.lineTo(x - 4, cy); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(x - 2, cy - 3, 1, 3);
-  // a small team pennant
-  ctx.fillStyle = '#4E3420'; ctx.fillRect(x + 9, y - 46, 1, 12); ctx.fillStyle = c; for (let i = 0; i < 6; i++) ctx.fillRect(x + 10 + i, y - 46 + Math.round(Math.sin(T * 5 - i * 0.6)), 1, 5 - Math.floor(i / 2));
-  const k = s.hp / s.max; ctx.fillStyle = '#2B2B2B'; ctx.fillRect(x - 15, y + 9, 30, 4); ctx.fillStyle = s.team === AR.team ? '#97C459' : '#E24B4A'; ctx.fillRect(x - 14, y + 10, Math.round(28 * k), 2);
-  if (s.team !== AR.team && !arVuln(s)) txt('PROTECTED', x, y + 18, 4, '#B4B2A9'); }
+function arTowerArt(s) { const x = Math.round(s.x), y = Math.round(s.y), c = TEAMC[s.team];
+  ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y + 6, 20, 7, 0, 0, TAU); ctx.stroke();
+  if (s.dead) { ctx.fillStyle = '#5A5666'; ctx.fillRect(x - 12, y - 4, 10, 8); ctx.fillStyle = '#6E6A78'; ctx.fillRect(x - 2, y - 2, 12, 7); ctx.fillStyle = '#4A4656'; ctx.fillRect(x + 4, y - 7, 6, 5); return; }
+  const f = s.fake || (s.fake = {k: s.tw, x, y, rise: 1, cd: 1, burst: 0, aimA: null, r: 12}); f.x = x; f.y = y; f.aimA = s.aim; f.cd = s.hit > 0 ? 0.2 : 1;
+  try { drawTower(f); } catch (e) {}
+  if (s.hit > 0 && Math.floor(T * 30) % 2 === 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5; try { drawTower(f); } catch (e) {} ctx.restore(); }
+  // the team flag on top
+  const fy = y - 86; ctx.fillStyle = '#4E3420'; ctx.fillRect(x, fy, 1, 12); ctx.fillStyle = c; for (let i = 0; i < 8; i++) ctx.fillRect(x + 1 + i, fy + Math.round(Math.sin(T * 5 - i * 0.6)), 1, 6 - Math.floor(i / 2));
+  const k = s.hp / s.max; ctx.fillStyle = '#2B2B2B'; ctx.fillRect(x - 15, y + 11, 30, 4); ctx.fillStyle = s.team === AR.team ? '#97C459' : '#E24B4A'; ctx.fillRect(x - 14, y + 12, Math.round(28 * k), 2);
+  if (s.team !== AR.team && !arVuln(s)) txt('PROTECTED', x, y + 20, 4, '#B4B2A9'); }
 function arBaseArt(s) { const x = Math.round(s.x), y = Math.round(s.y), c = TEAMC[s.team], dark = s.team ? '#4A2E7A' : '#B8501E', mid = s.team ? '#6C4AA8' : '#E07A2A', glow = TEAMRGB[s.team];
   ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(x, y + 9, 26, 9, 0, 0, TAU); ctx.fill();
   ctx.fillStyle = '#4A4656'; ctx.beginPath(); ctx.ellipse(x, y + 4, 24, 9, 0, 0, TAU); ctx.fill(); ctx.fillStyle = '#6A6676'; ctx.beginPath(); ctx.ellipse(x, y + 1, 24, 9, 0, 0, TAU); ctx.fill();
@@ -4459,24 +4550,29 @@ function arBaseArt(s) { const x = Math.round(s.x), y = Math.round(s.y), c = TEAM
   txt(`${TEAMN[s.team]} BASE`, x, y - 62, 6, c); if (s.team !== AR.team && !arVuln(s)) txt('PROTECTED', x, y + 24, 4, '#B4B2A9'); }
 { const dE = drawEnemy; drawEnemy = function (e) { if (!AR.on) return dE(e);
     if (e.k === 'rplayer') { e.hbT = 0; return; } if (e.k === 'rbase') { e.hbT = 0; return; }
-    if (e.lane) { const c = e.charm, sc = e.k === 'warden' ? 1 : 0.72; e.charm = 0; ctx.strokeStyle = TEAMC[e.team]; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(Math.round(e.x), Math.round(e.y + 5), (e.r + 2) * sc, 3, 0, 0, TAU); ctx.stroke(); ctx.save(); ctx.translate(e.x, e.y + 6); ctx.scale(sc, sc); ctx.translate(-e.x, -e.y - 6); try { dE(e); } finally { e.charm = c; ctx.restore(); }
+    if (e.lane) { const c = e.charm, lg = e.lunge > 0 ? Math.sin(e.lunge / 0.18 * Math.PI) * 5 : 0, ox = Math.round(Math.cos(e.la || 0) * lg * (e.lunge > 0 ? 1 : 0)), oy = Math.round(Math.sin(e.la || 0) * lg * 0.6); e.charm = 0; ctx.strokeStyle = e.team ? '#E24B4A' : '#5A9AF0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(Math.round(e.x), Math.round(e.y + 5), e.r + 3, 3.5, 0, 0, TAU); ctx.stroke();
+      const sx = e.x, sy = e.y; e.x += ox; e.y += oy; ctx.save(); ctx.filter = e.team ? 'sepia(0.55) hue-rotate(-38deg) saturate(2.4)' : 'sepia(0.55) hue-rotate(175deg) saturate(2.2)'; try { dE(e); } finally { e.charm = c; ctx.restore(); e.x = sx; e.y = sy; }
       const k = Math.max(0, e.hp / (e.max || 1)); ctx.fillStyle = '#2B2B2B'; ctx.fillRect(Math.round(e.x - 7), Math.round(e.y - e.r - 12), 14, 3); ctx.fillStyle = e.team === AR.team ? '#97C459' : '#E24B4A'; ctx.fillRect(Math.round(e.x - 6), Math.round(e.y - e.r - 11), Math.round(12 * k), 1); e.hbT = 0; return; }
     if (e.neutral) { const N = NEUTRAL[e.k]; ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(Math.round(e.x), Math.round(e.y + 8), e.r + 6, 5, 0, 0, TAU); ctx.fill(); dE(e); e.hbT = 0;
       const k = Math.max(0, e.hp / (e.max || 1)), w = 40, y = Math.round(e.y - e.r - 22); ctx.fillStyle = '#2B2B2B'; ctx.fillRect(Math.round(e.x - w / 2 - 1), y, w + 2, 5); ctx.fillStyle = '#F2A54A'; ctx.fillRect(Math.round(e.x - w / 2), y + 1, Math.round(w * k), 3);
       if (N) { txt(N.name, e.x, y - 6, 5, '#FFF1B8'); txt(BUFF[N.buff].txt.toUpperCase(), e.x, y - 13, 4, BUFF[N.buff].col); } return; }
     return dE(e); }; }
 ALLY.rmate = {draw(a) { arPlayerSprite(a, a.x, a.y); }};
+ALLY.rhelper = {draw(a) { const r = a.r, h = HUNTERS.find(q => q.id === r.hid) || HUNTERS[0], [k, x, y, f] = a.v;
+  if (k === 'mclone') { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 6, y + 14, 12, 2); ctx.globalAlpha = 0.7; frame(r.rat ? h.rat : h.spr, Math.floor(T * 8) % 4, r.rat ? 32 : 24, 32, x, y, f < 0); ctx.globalAlpha = 1; ctx.strokeStyle = TEAMC[r.team]; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y + 14, 8, 3, 0, 0, TAU); ctx.stroke(); return; }
+  const A_ = ALLY[k]; if (A_ && A_.draw && k !== 'rmate' && k !== 'rfoe' && k !== 'rhelper' && k !== 'arstruct') { try { A_.draw({kind: k, x, y, face: f, life: 5, max: 5, walk: T * 6, ph: T}); } catch (e) {} } }};
 ALLY.rfoe = {draw(a) { arPlayerSprite(a, a.x, a.y); }};
 ALLY.arstruct = {draw(a) { if (a.s.kind === 'base') arBaseArt(a.s); else arTowerArt(a.s); }};
 { const ti = typeof treeItems === 'function' ? treeItems : () => []; treeItems = function () { const L = ti(); if (!AR.on) return L;
     for (const r of Object.values(AR.R)) if (!r.dead && (r.team === AR.team || !r.bush || Math.hypot(r.x - G.x, r.y - G.y) < 44)) L.push({y: r.y, a: Object.assign(r, {kind: r.team === AR.team ? 'rmate' : 'rfoe'})});
+    for (const r of Object.values(AR.R)) if (!r.dead && r.al && !(r.stealth && r.team !== AR.team)) for (const v of r.al) L.push({y: v[2], a: {kind: 'rhelper', r, v}});
     for (const s of AR.S) L.push({y: s.y + 4, a: {kind: 'arstruct', s}}); return L; }; }
 ZONE.arworld = {draw() { if (!AR.on) return;
     const P = [AR.deadT <= 0 ? {x: G.x, y: G.y, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0)} : null].concat(Object.values(AR.R).filter(r => !r.dead && !(r.stealth && r.team !== AR.team)));
     for (const p of P) { if (!p || !p.bf) continue; if (p.bf & 2) { ctx.strokeStyle = `rgba(133,183,235,${(0.55 + 0.25 * Math.sin(T * 5)).toFixed(2)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y - 2), 15, 19, 0, 0, TAU); ctx.stroke(); }
       if (p.bf & 1) { ctx.fillStyle = '#97C459'; for (let i = 0; i < 3; i++) { const a = T * 3 + i * TAU / 3; ctx.fillRect(Math.round(p.x + Math.cos(a) * 12), Math.round(p.y - 2 + Math.sin(a) * 5), 2, 2); } } }
-    for (const s of AR.S) { if (s.dead || s.team === AR.team) continue; const R = s.kind === 'base' ? AR_RULES.baseRange : AR_RULES.towerRange, d = Math.hypot(G.x - s.x, G.y - s.y); if (d > R + 70) continue; const a = Math.min(1, (R + 70 - d) / 70);
-      ctx.fillStyle = `rgba(226,60,60,${(0.16 * a).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(Math.round(s.x), Math.round(s.y), R, R * 0.7, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = `rgba(255,90,90,${(0.6 * a).toFixed(2)})`; ctx.lineWidth = 2; ctx.stroke(); } }};
+    for (const s of AR.S) { if (s.dead || s.team === AR.team) continue; const R = arRange(s), d = Math.hypot(G.x - s.x, G.y - s.y); if (d > R + 70) continue; const a = Math.min(1, (R + 70 - d) / 70), me = s.tid === AR.id, c = me ? '226,60,60' : '110,200,90';
+      ctx.fillStyle = `rgba(${c},${((me ? 0.2 : 0.12) * a).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(Math.round(s.x), Math.round(s.y), R, R * 0.7, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = `rgba(${c},${(0.65 * a).toFixed(2)})`; ctx.lineWidth = 2; ctx.stroke(); } }};
 /* the arena HUD */
 function arLaneMap(cx, y, w) { const h = 12, x0 = cx - w / 2, X = x => x0 + (x + LANE.LX + 50) / (2 * LANE.LX + 100) * w;
   ctx.fillStyle = 'rgba(16,20,26,0.85)'; ctx.fillRect(x0 - 2, y - 2, w + 4, h + 4); ctx.fillStyle = '#4A6A3A'; ctx.fillRect(x0, y + 4, w, 4); ctx.fillStyle = '#8A7A5A'; ctx.fillRect(x0, y + 5, w, 2);
@@ -4486,7 +4582,7 @@ function arLaneMap(cx, y, w) { const h = 12, x0 = cx - w / 2, X = x => x0 + (x +
   for (const r of Object.values(AR.R)) if (!r.dead && (r.team === AR.team || (!r.stealth && !r.bush))) { ctx.fillStyle = r.team === AR.team ? '#97C459' : '#E24B4A'; ctx.fillRect(Math.round(X(r.x)) - 1, y + 1, 3, 3); }
   if (AR.deadT <= 0) { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(Math.round(X(G.x)) - 1, y, 3, 4); } }
 { const dov = drawOver; drawOver = function () { dov(); if (AR.on && G && G.paused) G.paused = false; if (!AR.on || screen !== 'play') return; const cx = Math.round(G.x - W / 2), cy = Math.round(G.y - H / 2);
-    const left = Math.max(0, AR_RULES.matchSecs - AR.t), mm = Math.floor(left / 60), ss = Math.floor(left % 60);
+    const left = AR.t, mm = Math.floor(left / 60), ss = Math.floor(left % 60);
     ctx.fillStyle = 'rgba(16,20,26,0.85)'; ctx.fillRect(W / 2 - 52, 50, 104, 15); txt(`${AR.kills[0]}`, W / 2 - 40, 57, 8, TEAMC[0]); txt(`${mm}:${String(ss).padStart(2, '0')}`, W / 2, 57, 6, '#FFF1B8'); txt(`${AR.kills[1]}`, W / 2 + 40, 57, 8, TEAMC[1]);
     arLaneMap(W / 2, 68, Math.min(180, W * 0.5)); txt(`next wave ${Math.max(0, Math.ceil(AR.waveT || 0))}`, W / 2, 88, 4, '#B4B2A9');
     let by_ = 96; if (AR.fangT > 0) { txt(`COBRA FANG +25% ${Math.ceil(AR.fangT)}s`, 6, by_, 5, BUFF.fang.col, 'left'); by_ += 8; } if (AR.shellT > 0 && (M().shield || 0) > 0) { txt(`CRAB SHELL ${Math.round(M().shield)} ${Math.ceil(AR.shellT)}s`, 6, by_, 5, BUFF.shell.col, 'left'); by_ += 8; }
@@ -4584,21 +4680,43 @@ function arRoomStage(c, t) { const L = AR.lobby; if (!L) return; const g = c.get
       if (turn) { const s = cur.type === 'ban' ? 'BANNING' : 'PICKING', dots = '.'.repeat(1 + Math.floor(t * 3) % 3), bw = textW(s + '...') + 8; g.fillStyle = '#FFF1B8'; g.fillRect(Math.round(cx - bw / 2) - 1, 49, bw + 2, 13); g.fillStyle = '#2B2B2B'; g.fillRect(Math.round(cx - bw / 2), 50, bw, 11); g.fillStyle = '#FFF1B8'; g.fillRect(Math.round(cx - 1), 62, 3, 3); stText(g, s + dots, cx - bw / 2 + 4, 56, 1, cur.type === 'ban' ? '#FF6A6A' : '#FCCC3C', 'left'); }
       if (p.id === AR.id) { const yy = 66 + Math.round(Math.sin(t * 5) * 2); g.fillStyle = '#FFF1B8'; g.beginPath(); g.moveTo(cx - 4, yy); g.lineTo(cx + 4, yy); g.lineTo(cx, yy + 5); g.fill(); stText(g, 'YOU', cx, yy - 5, 1, '#FFF1B8'); }
       stText(g, (p.id === L.host ? '* ' : '') + p.name, cx, fy + 15, 1, TEAMC[team]); } } }
-function arEndStage(c, t) { const g = c.getContext('2d'), W = c.width, H = c.height, L = AR.lobby, win = AR.over ? AR.over.win : null; g.imageSmoothingEnabled = false; stBack(g, W, H, t, 96); stBanner(g, 18, 4, 0, t, 60); stBanner(g, W - 18, 4, 1, t, 60); stFloor(g, 4, W / 2 - 10, 128, 0); stFloor(g, W / 2 + 10, W - 4, 128, 1);
-  if (!L) return; for (const team of [0, 1]) { const T = L.players.filter(p => p.team === team), won = win === team; T.forEach((p, i) => { const h = HUNTERS.find(z => z.id === (p.heroes || [])[0]); if (!h) return; const cx = team ? W - 50 - i * 40 : 50 + i * 40, hop = won ? Math.abs(Math.sin(t * 6 + i)) * 12 : 0;
-      stSprite(g, h, !won && win !== null, won ? Math.floor(t * 8) % 4 : 0, cx, 128 - hop, !!team, won || win === null ? null : 'grayscale(0.8) brightness(0.7)'); stText(g, p.name, cx, 143, 1, TEAMC[team]); }); }
-  if (win !== null && win !== undefined) for (let i = 0; i < 40; i++) { const x = (hsh(i, 1) * W + t * 20 * (hsh(i, 2) - 0.5)) % W, y = ((hsh(i, 4) * H + t * (30 + hsh(i, 5) * 30)) % H); g.fillStyle = i % 3 ? TEAMC[win] : '#FFF1B8'; g.fillRect(Math.round(x), Math.round(y), 2, 2); } }
+function arEndStage(c, t) { const g = c.getContext('2d'), W = c.width, H = c.height, L = AR.lobby, O = AR.over || {}, win = O.win, mine = win === AR.team, draw = win === null || win === undefined; g.imageSmoothingEnabled = false;
+  stBack(g, W, H, t, 104); const bt = win === 1 ? 1 : 0; stBanner(g, 22, 4, bt, t, 66); stBanner(g, W - 22, 4, bt, t, 66);
+  if (!mine && !draw) { g.fillStyle = 'rgba(20,20,40,0.4)'; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(160,170,210,0.55)'; for (let i = 0; i < 80; i++) { const x = (hsh(i, 1) * W) | 0, y = ((hsh(i, 2) * H + t * 140) % H) | 0; g.fillRect(x, y, 1, 5); } }
+  // the big banner drops in
+  const drop = Math.min(1, (t - (AR.endT || t)) / 0.7), ease = 1 - Math.pow(1 - drop, 3), bw = 220, len = 66, by = Math.round(-len + (len + 12) * ease) + Math.round(Math.sin(t * 2) * 1);
+  const c1 = draw ? '#B4B2A9' : !mine ? '#7A7884' : TEAMC[win], c2 = draw ? '#8A8890' : !mine ? '#55525E' : (win ? '#6A3FA0' : '#E07A2A');
+  g.fillStyle = '#4E3420'; g.fillRect(W / 2 - bw / 2 - 8, by - 4, bw + 16, 5); g.fillStyle = '#7A5230'; g.fillRect(W / 2 - bw / 2 - 8, by - 4, bw + 16, 1);
+  for (let i = 0; i < len; i++) { const w = i < len - 10 ? bw : bw - (i - (len - 10)) * 22, wv = Math.round(Math.sin(t * 3 + i * 0.12) * 1.2); g.fillStyle = i < 2 ? '#2B2B2B' : (i % 16 < 2 ? c2 : c1); g.fillRect(W / 2 - w / 2 + wv, by + 1 + i, w, 1); }
+  stText(g, draw ? 'DRAW' : mine ? 'VICTORY!' : 'DEFEAT', W / 2, by + 27, 5, draw || !mine ? '#E6E2EE' : '#FFF1B8');
+  const sub = draw ? 'NOBODY WON' : `${TEAMN[win]} BROKE THE ${TEAMN[1 - win]} BASE`; arPlain_(g, sub, W / 2, by + 50, 1, draw || !mine ? '#2B2B2B' : '#4A2810');
+  // everyone on the stage: the winners jump, the losers sit as grey rats
+  stFloor(g, 8, W / 2 - 14, 150, 0); stFloor(g, W / 2 + 14, W - 8, 150, 1);
+  if (L) for (const team of [0, 1]) { const T = L.players.filter(p => p.team === team), won = win === team; T.forEach((p, i) => { const h = HUNTERS.find(z => z.id === (p.heroes || [])[0]); if (!h) return; const cx = team ? W - 46 - i * 40 : 46 + i * 40, hop = won ? Math.abs(Math.sin(t * 6 + i)) * 10 : 0;
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(cx - 7, 149, 14, 2); stSprite(g, h, !won && !draw, won ? Math.floor(t * 8) % 4 : 0, cx, 150 - hop, !!team, won || draw ? null : 'grayscale(0.8) brightness(0.7)'); arPlain_(g, p.name, cx, 162, 1, TEAMC[team]); }); }
+  if (mine) for (let i = 0; i < 50; i++) { const x = (hsh(i, 1) * W + t * 20 * (hsh(i, 2) - 0.5) + W) % W, y = (hsh(i, 4) * H + t * (30 + hsh(i, 5) * 30)) % H; g.fillStyle = i % 3 ? TEAMC[win] : '#FFF1B8'; g.fillRect(Math.round(x), Math.round(y), 2, 2); } }
+function arPlain_(g, s, x, y, u, cc) { const k = s + u + cc; AR.ptx = AR.ptx || {}; let c2 = AR.ptx[k];
+  if (!c2) { const src = textCanvas(s, u, '#FF00FF'); c2 = document.createElement('canvas'); c2.width = src.width; c2.height = src.height; const x2 = c2.getContext('2d'); x2.drawImage(src, 0, 0); const D = x2.getImageData(0, 0, c2.width, c2.height), d = D.data, r = parseInt(cc.slice(1, 3), 16), gg = parseInt(cc.slice(3, 5), 16), b = parseInt(cc.slice(5, 7), 16);
+    for (let i = 0; i < d.length; i += 4) { if (d[i] > 200 && d[i + 2] > 200 && d[i + 1] < 60) { d[i] = r; d[i + 1] = gg; d[i + 2] = b; } else d[i + 3] = 0; } x2.putImageData(D, 0, 0); AR.ptx[k] = c2; }
+  g.drawImage(c2, Math.round(x - c2.width / 2), Math.round(y - c2.height / 2)); }
+const esc_ = s => String(s || '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+function arShowEnd(win, why) { arShow('end'); AR.endT = performance.now() / 1000; const L = AR.lobby, st = AR.stat || {}, mine = win === AR.team;
+  const sc = $a('#arScroll'); sc.classList.remove('open'); $a('#arScrollHint').textContent = 'TAP THE SCROLL TO SEE THE STATS';
+  const row = p => { const S_ = st[p.id] || {ko: 0, dn: 0, tw: 0, lv: 1}, hs = (p.heroes || []).map(id => HUNTERS.find(h => h.id === id)).filter(Boolean);
+    return `<tr><td class="who">${hs.map(h => `<img src="${arThumb(h)}" alt="">`).join('')}<span><b style="color:${p.team ? '#6A3FA0' : '#A8641E'}">${esc_(p.name)}</b><small>${hs.map(h => esc_(h.name)).join(' · ')}</small></span></td><td>${S_.ko}</td><td>${S_.dn}</td><td>${S_.tw}</td><td>${S_.lv}</td></tr>`; };
+  $a('#arStats').innerHTML = L ? [0, 1].map(t => `<tr class="th"><td colspan="5" style="color:${t ? '#6A3FA0' : '#A8641E'}">TEAM ${TEAMN[t]}${win === t ? ' · WINNERS' : ''}</td></tr>` + L.players.filter(p => p.team === t).map(row).join('')).join('') : '';
+  $a('#arSeal').textContent = win === null || win === undefined ? 'DRAW' : TEAMN[win]; $a('#arSeal').className = 'seal' + (mine ? '' : ' lost');
+  sc.onclick = () => { sc.classList.toggle('open'); $a('#arScrollHint').textContent = sc.classList.contains('open') ? 'TAP TO ROLL IT UP' : 'TAP THE SCROLL TO SEE THE STATS'; try { sfx('pick'); } catch (e) {} };
+  $a('#arAgain').style.display = AR.host ? '' : 'none'; $a('#arAgain').onclick = () => arSend({t: 'backToLobby'}); }
 (function arStageLoop() { const go = () => { const a = document.getElementById('arena'); if (a && a.style.display !== 'none' && typeof booted !== 'undefined' && booted) { const t = performance.now() / 1000;
       const vis = id => { const e = document.getElementById(id); return e && e.offsetParent ? e : null; }; let c;
       try { if ((c = vis('arHomeStage'))) arHomeStage(c, t); if ((c = vis('arStage'))) arRoomStage(c, t); if ((c = vis('arEndStage'))) arEndStage(c, t); } catch (e) {} }
     requestAnimationFrame(go); }; requestAnimationFrame(go); })();
-const esc_ = s => String(s || '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
-function arShowEnd(win, why) { arShow('end'); const mine = win === AR.team; $a('#arEndT').textContent = win === null || win === undefined ? 'DRAW' : mine ? 'VICTORY!' : 'DEFEAT'; $a('#arEndT').style.color = win === null || win === undefined ? '#FFF1B8' : TEAMC[win];
-  $a('#arEndWhy').textContent = (win === null || win === undefined ? '' : `Team ${TEAMN[win]} wins. `) + (why || ''); $a('#arAgain').style.display = AR.host ? '' : 'none'; $a('#arAgain').onclick = () => arSend({t: 'backToLobby'}); }
 (function arInit() {
   const nm = $a('#arName'); try { nm.value = localStorage.getItem('wrh_arena_name') || ''; } catch (e) {} const keep = () => { try { localStorage.setItem('wrh_arena_name', nm.value.trim()); } catch (e) {} };
   const name = () => (nm.value.trim() || 'Hunter').slice(0, 14);
   $a('#ar2v2').onclick = () => { keep(); arConnect(); const go = () => arSend({t: 'create', name: name(), mode: '2v2'}); AR.ws.readyState === 1 ? go() : AR.ws.addEventListener('open', go, {once: true}); };
+  $a('#ar1v1').onclick = () => { keep(); arConnect(); const go = () => arSend({t: 'create', name: name(), mode: '1v1'}); AR.ws.readyState === 1 ? go() : AR.ws.addEventListener('open', go, {once: true}); };
   $a('#ar3v3').onclick = () => { keep(); arConnect(); const go = () => arSend({t: 'create', name: name(), mode: '3v3'}); AR.ws.readyState === 1 ? go() : AR.ws.addEventListener('open', go, {once: true}); };
   $a('#arJoin').onclick = () => { keep(); const c = $a('#arJoinCode').value.trim().toUpperCase(); if (!c) return arStatus('Type the room code first', true); arConnect(); const go = () => arSend({t: 'join', code: c.startsWith('RAT-') ? c : 'RAT-' + c, name: name()}); AR.ws.readyState === 1 ? go() : AR.ws.addEventListener('open', go, {once: true}); };
   $a('#arCopy').onclick = async () => { try { await navigator.clipboard.writeText(AR.code); $a('#arCopy').textContent = 'Copied!'; } catch (e) { $a('#arCopy').textContent = AR.code; } setTimeout(() => $a('#arCopy').textContent = 'Copy code', 1500); };
