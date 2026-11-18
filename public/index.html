@@ -3718,7 +3718,7 @@ function drawPause() {
   uctx.setTransform(1, 0, 0, 1, 0, 0); uctx.clearRect(0, 0, uv.width, uv.height); ctx.fillStyle = 'rgba(16,20,26,0.9)'; ctx.fillRect(0, 0, W, H); pauseHits = [];
   let y = Math.round(H / 2 - 58); txt('PAUSED', W / 2, y, 14, '#FCCC3C'); y += 16;
   const lines = TOUCH ? ['LEFT THUMB: move', 'ATTACK button: tap = nearest, drag = aim, let go = fire', 'YELLOW: skill 1   RED: skill 2 (drag to aim)', 'stance heroes: stand still, then tap an enemy', 'tap a portrait to switch, tap the minimap for the island']
-    : ['WASD / arrows: move     MOUSE: aim', 'LEFT CLICK, R, F or J: attack (hold to aim / charge)', 'SPACE: skill 1     SHIFT / RIGHT CLICK: skill 2 (hold to aim, let go to cast)', '1 2 3 or Q E: switch rats     TAB: island map', 'Z X C V: take an upgrade     R: reroll (on that screen)', (DEV_MODE ? 'N: skip day / night     ' : '') + 'T: trophy     P or ESC: pause     M: sound'];
+    : ['WASD / arrows: move     MOUSE: aim', 'R, F or LEFT CLICK: attack (hold to aim / charge)', 'SPACE: skill 1     SHIFT / RIGHT CLICK: skill 2 (hold to aim, let go to cast)', '1 2 3 or Q E: switch rats     TAB: island map', 'Z X C V: take an upgrade     R: reroll (on that screen)', (DEV_MODE ? 'N: skip day / night     ' : '') + 'T: trophy     P or ESC: pause     M: sound'];
   for (const l of lines) y = smallWrap(l, W / 2, y, W - 16, '#FFF4D6', 6);
   y += 6; const bw = 60; const btn = (x, w, label, col, i, hh) => { ctx.fillStyle = '#2B2B2B'; ctx.fillRect(x - 1, y - 1, w + 2, hh + 2); ctx.fillStyle = col; ctx.fillRect(x, y, w, hh); txt(label, x + w / 2, y + hh / 2, hh > 12 ? 8 : 7, '#FFFFFF'); pauseHits.push({x: x - 1, y: y - 1, w: w + 2, h: hh + 2, i}); };
   btn(W / 2 - bw - 3, bw, 'RESUME', '#FCCC3C', 'resume', 14); btn(W / 2 + 4, bw, 'QUIT', '#8a8070', 'quit', 14); y += 20; btn(W / 2 - bw - 3, 2 * bw + 7, MUTE ? 'SOUND: OFF' : 'SOUND: ON', MUTE ? '#5F5E5A' : '#4A3F6B', 'mute', 12); y += 16; btn(W / 2 - bw - 3, 2 * bw + 7, 'SAVE CODE', '#2C6A8A', 'save', 12);
@@ -3776,7 +3776,7 @@ function hud() {
   for (const b of topHits) { roundBtn(b.x, b.y, b.r, '#4A3F6B'); ctx.fillStyle = '#FFF1B8'; if (b.i === 'pause') { ctx.fillRect(b.x - 3, b.y - 3, 2, 6); ctx.fillRect(b.x + 1, b.y - 3, 2, 6); } else for (const o of [-3, 1]) { ctx.beginPath(); ctx.moveTo(b.x + o, b.y - 3); ctx.lineTo(b.x + o + 3, b.y); ctx.lineTo(b.x + o, b.y + 3); ctx.fill(); } }
   // buttons
   const B = btns();
-  if (B.atk && !G.fort) { roundBtn(B.atk.x, B.atk.y, B.atk.r, atkHeld ? '#FFF1B8' : '#E6E2FF'); ctx.fillStyle = h.col; ctx.beginPath(); ctx.arc(B.atk.x, B.atk.y, B.atk.r - 4, 0, TAU); ctx.fill(); txt('ATTACK', B.atk.x, B.atk.y - 2, 6, '#FFFFFF'); if (!TOUCH) txt('J', B.atk.x, B.atk.y + 6, 5, '#FFF4D6'); }
+  if (B.atk && !G.fort) { roundBtn(B.atk.x, B.atk.y, B.atk.r, atkHeld ? '#FFF1B8' : '#E6E2FF'); ctx.fillStyle = h.col; ctx.beginPath(); ctx.arc(B.atk.x, B.atk.y, B.atk.r - 4, 0, TAU); ctx.fill(); txt('ATTACK', B.atk.x, B.atk.y - 2, 6, '#FFFFFF'); if (!TOUCH) txt('R', B.atk.x, B.atk.y + 6, 5, '#FFF4D6'); }
   if (rat) { skillBtn(B.s1, 1); skillBtn(B.s2, 2); } else if (h.s3) skillBtn(B.s1, 3);
   if (skAim && skAim.c) { const b = skAim.btn === 0 ? B.atk : B['s' + skAim.btn]; if (b) { const dx = skAim.c.x - skAim.o.x, dy = skAim.c.y - skAim.o.y, l = Math.hypot(dx, dy), k = l > 20 ? 20 / l : 1; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.beginPath(); ctx.arc(b.x + dx * k, b.y + dy * k, 5, 0, TAU); ctx.fill(); } }
   if (h.hud) h.hud(m);
@@ -3851,12 +3851,12 @@ addEventListener('keydown', ev => {
   if (G.paused || ev.repeat) return;
   if (k === 'Tab') { mapOpen = !mapOpen; return; }
   if (G.lv) { const ui = ['z', 'x', 'c', 'v'].indexOf(k); if (ui >= 0) chooseUpg(ui); if (k === 'r') rerollUpg(); }
-  if (k === 'j' || k === 'f' || (k === 'r' && !G.lv)) pressAtk(); if (k === ' ') pressSkill(1); if (k === 'Shift') pressSkill(2);
+  if (k === 'f' || (k === 'r' && !G.lv)) pressAtk(); if (k === ' ') pressSkill(1); if (k === 'Shift') pressSkill(2);
   if (k === '1' || k === '2' || k === '3') switchTo(+k - 1);
   if (k === 'q' || k === 'e') { const n = G.team.length; for (let s = 1; s < n; s++) { const i = (G.ti + (k === 'e' ? s : n - s)) % n; if (!G.team[i].down) { switchTo(i); break; } } }
   if (k === 'n') skipTime();
 });
-addEventListener('keyup', ev => { const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key; held[k] = false; if (!G || screen !== 'play') return; if (k === ' ') releaseSkill(1); if (k === 'Shift') releaseSkill(2); if (k === 'j' || k === 'f' || k === 'r') releaseAtk(); });
+addEventListener('keyup', ev => { const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key; held[k] = false; if (!G || screen !== 'play') return; if (k === ' ') releaseSkill(1); if (k === 'Shift') releaseSkill(2); if (k === 'f' || k === 'r') releaseAtk(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && screen === 'play' && G) G.paused = true; });
 addEventListener('blur', () => { if (screen === 'play' && G) G.paused = true; skAim = null; tdrag = null; joy = null; for (const k in held) held[k] = false; keyHold[1] = keyHold[2] = false; atkHeld = false; });
 
@@ -4158,7 +4158,7 @@ function arVuln(s) { if (!s || s.dead) return false; if (s.kind === 't1') return
 function arStart(m) {
   AR.on = true; AR.over = null; AR.mode = m.mode; AR.hostId = m.host; AR.host = m.host === AR.id; AR.t = 0; AR.deadT = 0; AR.R = {}; AR.nm = {}; AR.feed = []; AR.nid = 1; AR.kills = [0, 0]; AR.waveT = AR_RULES.firstWave; AR.wave = 0;
   arWrapZones(); AR.fxq = []; AR.zq = []; AR.gz = {}; AR.pb = 0; AR.stat = {}; AR.fangT = 0; AR.shellT = 0; AR.lordFor = [0, 0]; AR.lordUp = false; for (const C of CAMPS) C.t = 30; AR.nT = {cobra: AR_RULES.neutralAt, gcrab: AR_RULES.neutralAt, warden: 1e9}; AR.mt = []; AR.ccImm = 0; AR.slowT = 0; AR.revealT = 0; AR.pushB = 0; AR.hurtBy = null; AR.S = arMkStructs(); AR.sp = {};
-  const me = m.players.find(p => p.id === AR.id); AR.me = me; AR.team = me.team;
+  const me = m.players.find(p => p.id === AR.id); AR.me = me; AR.team = me.team; AR.flip = me.team === 1;
   for (const p of m.players) if (p.id !== AR.id) AR.R[p.id] = {id: p.id, name: p.name, team: p.team, x: 0, y: 0, tx: 0, ty: 0, hp: 100, max: 100, dead: false, hid: p.heroes[0] || 'supernan', rat: false, face: 1, walk: 0, seen: 0, lvl: 1};
   const want = (me.heroes && me.heroes.length ? me.heroes : ['supernan']).slice(0, AR.mode === '3v3' ? 1 : 2); picks = want.map(id => HUNTERS.findIndex(h => h.id === id)).filter(i => i >= 0); if (!picks.length) picks = [0]; sel = picks[0];
   arHideOverlay(); arResetMap(); AR.allow = true; newGame(); AR.allow = false; arResetMap();
@@ -4403,10 +4403,10 @@ function arDownOne(q, i) { q.__dn = true; AR.mt[i] = arRespawn(); const m = {t: 
 function arStartDeath() { if (AR.deadT > 0) return; G.team.forEach((q, i) => { q.down = true; if (!q.__dn) arDownOne(q, i); }); AR.deadT = 1; M().down = false; M().hp = 1; toast('ALL YOUR HUNTERS ARE DOWN'); }
 function arStartDeathOld() { if (AR.deadT > 0) return; AR.deadT = Math.min(18, 5 + (G.lvl || 1) * 0.7); G.team.forEach(q => { q.down = true; q.hp = 1; }); M().down = false; const m = {t: 'died', killer: G.t - (AR.lastHitT || -9) < 4 ? AR.lastFrom : null, x: Math.round(G.x), y: Math.round(G.y)}; arSend(m); m.from = AR.id; arDied(m); toast(`DOWN! BACK IN ${Math.ceil(AR.deadT)}s`); }
 function arEnd(win, why, st) { if (AR.over) return; if (st) AR.stat = st; arVoiceStop(); arChatClose(); $a('#arComms').style.display = 'none'; AR.over = {win, why}; arFlush(); arShowEnd(win, why); }
-function arQuit() { arVoiceStop(); $a('#arComms').style.display = 'none'; AR.on = false; AR.over = null; screen = 'title'; if (G) { G.hut = null; G.en = []; } arResetMap(); }
+function arQuit() { AR.flip = false; AR.flipNow = false; arVoiceStop(); $a('#arComms').style.display = 'none'; AR.on = false; AR.over = null; screen = 'title'; if (G) { G.hut = null; G.en = []; } arResetMap(); }
 
 /* ---------- hooks into the game ---------- */
-{ const up = update; update = function (dt) { if (!AR.on) return up(dt); if (AR.over) return; G.paused = false; up(dt); if (screen === 'over') { screen = 'play'; arStartDeath(); } arTick(dt); }; }
+{ const up = update; update = function (dt) { if (!AR.on) return up(dt); if (AR.over) return; G.paused = false; const sv = arMirrorInput(); try { up(dt); } finally { arUnmirror(sv); } if (screen === 'over') { screen = 'play'; arStartDeath(); } arTick(dt); }; }
 { const st = spawnTick; spawnTick = function (dt) { if (AR.on) return; return st(dt); }; }
 { const gi = goInside; goInside = function (L) { if (AR.on) return; return gi(L); }; }
 { const se = startEnding; startEnding = function () { if (AR.on) return; return se(); }; }
@@ -4484,6 +4484,15 @@ function arVoiceButtons() { const m = $a('#arMicBtn'), s = $a('#arSpkBtn'); if (
 { const K = KIT.brine, s2 = K.s2, L2 = K.lab2; Object.defineProperty(K, 'lab2', {get() { return AR.on ? 'HULL' : L2; }, configurable: true}); K.s2 = function (m, ai) { if (!AR.on) return s2.call(this, m, ai); m.shield = Math.max(m.shield || 0, Math.round(m.max * 0.45)); m.s.hull = 5; sparks(G.x, G.y, 14, '#B4B2A9', '#FCCC3C', 90); sfx('ability'); word('IRON HULL', G.x, G.y - 28, '#E6E2D2'); return true; };
   const tk = K.tick; K.tick = function (m, dt, on, rat) { tk && tk.call(this, m, dt, on, rat); const s = m.s; if (!(s.hull > 0)) return; s.hull -= dt; if (s.hull <= 0 || !(m.shield > 0)) { s.hull = 0; m.shield = 0; if (on) brineChestEnd(m); } };
   const dr = K.draw; K.draw = function (m, rat, hop) { if (dr) dr.call(this, m, rat, hop); if (!(m.s.hull > 0)) return; ctx.strokeStyle = `rgba(230,226,210,${(0.6 + 0.3 * Math.sin(T * 8)).toFixed(2)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(Math.round(G.x), Math.round(G.y - 2 - (hop || 0)), 15, 19, 0, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(180,178,169,0.18)'; ctx.fill(); }; }
+/* MOON sees the world mirrored, like Mobile Legends: your base is always on the left and you always push right.
+   Only the world flips: the HUD and text stay readable, and left/right controls and mouse aim are flipped to match. */
+{ const dg = drawGround; drawGround = function (cx, cy) { AR.flipNow = false; if (AR.on && AR.flip) { ctx.translate(cx, 0); ctx.translate(W + cx, 0); ctx.scale(-1, 1); AR.flipNow = true; } return dg(cx, cy); }; }
+{ const t0 = txt; txt = function (s, x, y, size, col, align) { if (AR.flipNow) { x = W - x - 2 * TXO.x; align = align === 'left' ? 'right' : align === 'right' ? 'left' : align; } return t0(s, x, y, size, col, align); }; }
+function arMirrorInput(on) { if (!(AR.on && AR.flip)) return null; const sv = {a: held.a, d: held.d, L: held.ArrowLeft, R: held.ArrowRight, mx: mouse.x, jc: joy && joy.c ? joy.c.x : null, sk: skAim && skAim.c ? skAim.c.x : null};
+  held.a = sv.d; held.d = sv.a; held.ArrowLeft = sv.R; held.ArrowRight = sv.L; mouse.x = Ww - mouse.x; if (sv.jc !== null) joy.c.x = 2 * joy.o.x - joy.c.x; if (sv.sk !== null) skAim.c.x = 2 * skAim.o.x - skAim.c.x; return sv; }
+function arUnmirror(sv) { if (!sv) return; held.a = sv.a; held.d = sv.d; held.ArrowLeft = sv.L; held.ArrowRight = sv.R; mouse.x = sv.mx; if (sv.jc !== null && joy && joy.c) joy.c.x = sv.jc; if (sv.sk !== null && skAim && skAim.c) skAim.c.x = sv.sk; }
+{ const d0 = draw; draw = function () { const sv = arMirrorInput(); try { return d0(); } finally { arUnmirror(sv); AR.flipNow = false; } }; }
+{ const dm = drawMini; drawMini = function () { if (!(AR.on && AR.flip)) return dm(); const b = MMB(); ctx.save(); ctx.translate(2 * b.x + b.s, 0); ctx.scale(-1, 1); try { dm(); } finally { ctx.restore(); } }; }
 /* the arena's level cap is 15 */
 { const pk = pick; pick = function (d) { if (AR.on && !d.kind && (G.lvl || 1) >= 15) return; return pk(d); }; }
 /* ---------- arena-only hero changes ---------- */
@@ -4536,12 +4545,14 @@ function arBaseArt(s) { const x = Math.round(s.x), y = Math.round(s.y), c = TEAM
   for (let i = 0; i < 12; i++) { const a = i * TAU / 12 + T * 0.3, rx = x + Math.cos(a) * 20, ry = y + 2 + Math.sin(a) * 7; ctx.fillStyle = `rgba(${glow},${(0.5 + 0.4 * Math.sin(T * 3 + i)).toFixed(2)})`; ctx.fillRect(Math.round(rx) - 1, Math.round(ry), 2, 1); }
   if (s.dead) return;
   // the banner
+  // MOON's banner is SUN's mirrored, so it always stands on the outer side of the base, right next to it
+  ctx.save(); if (s.team) { ctx.translate(2 * x, 0); ctx.scale(-1, 1); }
   const px = x - 36, top = y - 42; ctx.fillStyle = '#4E3420'; ctx.fillRect(px - 1, top, 3, 52); ctx.fillStyle = '#7A5230'; ctx.fillRect(px - 1, top, 1, 52); ctx.fillStyle = '#FCCC3C'; ctx.fillRect(px - 2, top - 3, 5, 3);
   ctx.beginPath(); for (let i = 0; i <= 20; i++) { const wv = Math.sin(T * 4 - i * 0.35) * 1.5 * (i / 20); ctx.lineTo(px + 2 + i, top + 1 + wv); } for (let i = 20; i >= 0; i--) { const wv = Math.sin(T * 4 - i * 0.35) * 1.5 * (i / 20); ctx.lineTo(px + 2 + i - (i === 20 ? 6 : 0), top + 25 + wv - (i === 20 ? 12 : 0)); if (i === 20) ctx.lineTo(px + 22, top + 25 + wv); } ctx.closePath();
   ctx.fillStyle = mid; ctx.fill(); ctx.strokeStyle = dark; ctx.lineWidth = 1.2; ctx.stroke();
   const ex = px + 11, ey = top + 12 + Math.round(Math.sin(T * 4 - 3) * 1.5);
   if (s.team === 0) { ctx.fillStyle = '#FFE27A'; for (let i = 0; i < 8; i++) { const a = i * TAU / 8 + T * 0.5; ctx.fillRect(Math.round(ex + Math.cos(a) * 6) - 1, Math.round(ey + Math.sin(a) * 6) - 1, 2, 2); } ctx.fillStyle = '#FCCC3C'; ctx.beginPath(); ctx.arc(ex, ey, 4, 0, TAU); ctx.fill(); }
-  else { ctx.fillStyle = '#E6E2FF'; ctx.beginPath(); ctx.arc(ex, ey, 5.5, 0, TAU); ctx.fill(); ctx.fillStyle = mid; ctx.beginPath(); ctx.arc(ex + 2.5, ey - 1.5, 4.8, 0, TAU); ctx.fill(); }
+  else { ctx.fillStyle = '#E6E2FF'; ctx.beginPath(); ctx.arc(ex, ey, 5.5, 0, TAU); ctx.fill(); ctx.fillStyle = mid; ctx.beginPath(); ctx.arc(ex + 2.5, ey - 1.5, 4.8, 0, TAU); ctx.fill(); } ctx.restore();
   // the full moon heart floats over the base: it is the team's core
   const fl = s.hit > 0 && Math.floor(T * 30) % 2 === 0, mc = moonCanvas(14, [1, 1, 1, 1, 1, 1, 1].map(Boolean)), hy = y - 34 + Math.round(Math.sin(T * 2) * 2);
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(x, hy, 2, x, hy, 26); g.addColorStop(0, `rgba(${glow},0.5)`); g.addColorStop(1, `rgba(${glow},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, hy, 26, 0, TAU); ctx.fill(); ctx.restore();
@@ -4574,14 +4585,14 @@ ZONE.arworld = {draw() { if (!AR.on) return;
     for (const s of AR.S) { if (s.dead || s.team === AR.team) continue; const R = arRange(s), d = Math.hypot(G.x - s.x, G.y - s.y); if (d > R + 70) continue; const a = Math.min(1, (R + 70 - d) / 70), me = s.tid === AR.id, c = me ? '226,60,60' : '110,200,90';
       ctx.fillStyle = `rgba(${c},${((me ? 0.2 : 0.12) * a).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(Math.round(s.x), Math.round(s.y), R, R * 0.7, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = `rgba(${c},${(0.65 * a).toFixed(2)})`; ctx.lineWidth = 2; ctx.stroke(); } }};
 /* the arena HUD */
-function arLaneMap(cx, y, w) { const h = 12, x0 = cx - w / 2, X = x => x0 + (x + LANE.LX + 50) / (2 * LANE.LX + 100) * w;
+function arLaneMap(cx, y, w) { const h = 12, x0 = cx - w / 2, X = x => x0 + (AR.flip ? 1 - (x + LANE.LX + 50) / (2 * LANE.LX + 100) : (x + LANE.LX + 50) / (2 * LANE.LX + 100)) * w;
   ctx.fillStyle = 'rgba(16,20,26,0.85)'; ctx.fillRect(x0 - 2, y - 2, w + 4, h + 4); ctx.fillStyle = '#4A6A3A'; ctx.fillRect(x0, y + 4, w, 4); ctx.fillStyle = '#8A7A5A'; ctx.fillRect(x0, y + 5, w, 2);
   for (const e of G.en) if (e.lane && !e.dead) { ctx.fillStyle = TEAMC[e.team]; ctx.fillRect(Math.round(X(e.x)), y + 5, 1, 2); }
   for (const s of AR.S) { const sx = Math.round(X(s.x)), sz = s.kind === 'base' ? 5 : 3; ctx.fillStyle = s.dead ? '#55525E' : TEAMC[s.team]; ctx.fillRect(sx - sz, y + 6 - sz, sz * 2, sz * 2); }
   for (const e of G.en) if (e.neutral && !e.dead) { ctx.fillStyle = '#F2A54A'; ctx.fillRect(Math.round(X(e.x)) - 2, e.y < 0 ? y - 1 : y + 9, 4, 3); }
   for (const r of Object.values(AR.R)) if (!r.dead && (r.team === AR.team || (!r.stealth && !r.bush))) { ctx.fillStyle = r.team === AR.team ? '#97C459' : '#E24B4A'; ctx.fillRect(Math.round(X(r.x)) - 1, y + 1, 3, 3); }
   if (AR.deadT <= 0) { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(Math.round(X(G.x)) - 1, y, 3, 4); } }
-{ const dov = drawOver; drawOver = function () { dov(); if (AR.on && G && G.paused) G.paused = false; if (!AR.on || screen !== 'play') return; const cx = Math.round(G.x - W / 2), cy = Math.round(G.y - H / 2);
+{ const dov = drawOver; drawOver = function () { AR.flipNow = false; dov(); if (AR.on && G && G.paused) G.paused = false; if (!AR.on || screen !== 'play') return; const cx = Math.round(G.x - W / 2), cy = Math.round(G.y - H / 2);
     const left = AR.t, mm = Math.floor(left / 60), ss = Math.floor(left % 60);
     ctx.fillStyle = 'rgba(16,20,26,0.85)'; ctx.fillRect(W / 2 - 52, 50, 104, 15); txt(`${AR.kills[0]}`, W / 2 - 40, 57, 8, TEAMC[0]); txt(`${mm}:${String(ss).padStart(2, '0')}`, W / 2, 57, 6, '#FFF1B8'); txt(`${AR.kills[1]}`, W / 2 + 40, 57, 8, TEAMC[1]);
     arLaneMap(W / 2, 68, Math.min(180, W * 0.5)); txt(`next wave ${Math.max(0, Math.ceil(AR.waveT || 0))}`, W / 2, 88, 4, '#B4B2A9');
@@ -4589,7 +4600,7 @@ function arLaneMap(cx, y, w) { const h = 12, x0 = cx - w / 2, X = x => x0 + (x +
     for (const t of [0, 1]) if (AR.lordFor && AR.lordFor[t]) { txt(`${TEAMN[t]}: THE LORD JOINS THE NEXT WAVE`, 6, by_, 5, t === AR.team ? '#E6E2D2' : '#F09595', 'left'); by_ += 8; }
     if (G.team.length > 1) G.team.forEach((q, i) => { if (q.__dn && AR.mt[i] > 0) { txt(`${i + 1} ${q.h.name}: ${Math.ceil(AR.mt[i])}s`, 6, H - 50 - i * 8, 5, '#F09595', 'left'); } });
     // who is hitting me
-    const hb = AR.hurtBy; if (hb && hb.pid && AR.R[hb.pid]) { const r = AR.R[hb.pid], bx = r.x - cx, by = r.y - cy, off = bx < 10 || bx > W - 10 || by < 20 || by > H - 10, h = HUNTERS.find(q => q.id === r.hid);
+    const hb = AR.hurtBy; if (hb && hb.pid && AR.R[hb.pid]) { const r = AR.R[hb.pid], bx = AR.flip ? W - (r.x - cx) : r.x - cx, by = r.y - cy, off = bx < 10 || bx > W - 10 || by < 20 || by > H - 10, h = HUNTERS.find(q => q.id === r.hid);
       txt(`${r.name} (${h ? h.name : '?'}) IS HITTING YOU`, W / 2, H - 40, 6, `rgba(255,106,106,${Math.min(1, hb.t).toFixed(2)})`);
       if (off) { const a = Math.atan2(by - H / 2, bx - W / 2), rr = Math.min(W, H) * 0.42, px = W / 2 + Math.cos(a) * rr, py = H / 2 + Math.sin(a) * rr * 0.85; ctx.save(); ctx.translate(Math.round(px), Math.round(py)); ctx.rotate(a); ctx.fillStyle = '#FF6A6A'; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, -7); ctx.lineTo(-2, 0); ctx.lineTo(-6, 7); ctx.fill(); ctx.restore(); } }
     if (hb && hb.tower) txt('THE ENEMY TOWER IS SHOOTING YOU', W / 2, H - 40, 6, '#FF9A6A');
