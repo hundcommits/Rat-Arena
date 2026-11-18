@@ -4052,7 +4052,7 @@ addEventListener('keydown', ev => { if (screen !== 'title') return; const ov = d
   <div class="card" id="arPool"><h2 id="arPickTitle">The hunters</h2><div class="heroes" id="arHeroes"></div></div>
  </div>
  <div class="scr end" id="ar_end" style="display:none"><canvas class="stage" id="arEndStage" width="384" height="172"></canvas>
-  <div id="arScroll" class="scroll"><div class="rod"></div><div class="paper"><table id="arStats"><thead><tr><th>HUNTER</th><th>KO</th><th>DOWN</th><th>TOWERS</th><th>LVL</th></tr></thead></table><div id="arSeal" class="seal"></div></div><div class="rod"></div></div>
+  <div id="arScroll" class="scroll"><div class="rod"></div><div class="paper"><table><thead><tr><th>HUNTER</th><th title="Kills">⚔️<br>KILLS</th><th title="Deaths">💀<br>DEATHS</th><th title="Assists">🤝<br>ASSISTS</th><th title="Towers broken">🏰<br>TOWERS</th><th title="Level">⭐<br>LEVEL</th></tr></thead><tbody id="arStats"></tbody></table><div id="arSeal" class="seal"></div></div><div class="rod"></div></div>
   <p class="sub" id="arScrollHint"></p><button class="btn" id="arAgain">Back to the lobby</button><p class="sub">Only the host can take everyone back to the lobby.</p></div>
  <div id="arStatus"></div>
 </div></div>
@@ -4144,7 +4144,7 @@ function arTerr(tx, ty) { const x = tx * TS + 8, y = ty * TS + 8, ax = Math.abs(
   return 'g'; }
 { const bt = baseTerr; baseTerr = function (tx, ty) { return AR.on ? arTerr(tx, ty) : bt(tx, ty); }; }
 { const ar0 = areaAt; areaAt = function (x, y) { return AR.on ? 'meadow' : ar0(x, y); }; }
-function arResetMap() { try { CHK.clear(); } catch (e) {} }
+function arResetMap() { try { CHK.clear(); } catch (e) {} AR.miniC = null; }
 
 /* ---------- starting a match ---------- */
 function arMkStructs() { const S = []; for (const t of [0, 1]) { const s = arSide(t);
@@ -4269,7 +4269,7 @@ function arNeutralDie(e, by) { if (e.dead) return; e.dead = true; e.deadAt = G.t
   if (by === AR.id) arGotBuff(N.buff); else arSend({t: 'buff', to: by, k: N.buff});
   arBroadcastFeed(`${p.name || '?'} (${TEAMN[team]}) slew the ${N.name}: ${BUFF[N.buff].name}`); }
 function arGotBuff(k) { if (k === 'fang') AR.fangT = 90; if (k === 'shell') { AR.shellT = 60; const m = M(); m.shield = Math.max(m.shield || 0, m.max); } toast(`${BUFF[k].name}: ${BUFF[k].txt.toUpperCase()}`); sfx('level'); }
-function arStat(pid) { AR.stat = AR.stat || {}; return AR.stat[pid] || (AR.stat[pid] = {ko: 0, dn: 0, tw: 0, lv: 1}); }
+function arStat(pid) { AR.stat = AR.stat || {}; return AR.stat[pid] || (AR.stat[pid] = {ko: 0, dn: 0, as: 0, tw: 0, lv: 1}); }
 function arFinish(win, why) { if (AR.over) return; if (G) arStat(AR.id).lv = G.lvl; for (const r of Object.values(AR.R)) arStat(r.id).lv = r.lvl || 1; const m = {t: 'end', win, why, st: AR.stat}; arSend(m); arEnd(win, why, AR.stat); }
 function arBroadcastFeed(s) { arFeed(s); arSend({t: 'fx', k: 'feed', s}); }
 function arHostTick(dt) {
@@ -4306,11 +4306,11 @@ function arDeep(o, d) { const out = {}; let n = 0; for (const k in o) { const v 
     else if (Array.isArray(v)) { if (v.length <= 12 && v.every(q => typeof q === 'number')) out[k] = v.map(q => Math.round(q * 10) / 10); else continue; }
     else if (t === 'object' && d > 0 && v !== G && !(v instanceof Set) && !(v instanceof Map) && !v.getContext && !v.naturalWidth) out[k] = arDeep(v, d - 1); else continue;
     if (++n > 40) break; } return out; }
-function arSendState() { const m = M(); arSend({t: 's', wt: G.hut && G.hut.kind === 'watch' ? [Math.round(G.hut.x), Math.round(G.hut.y), +(G.hut.hp === undefined ? 1 : Math.max(0, G.hut.hp / G.hut.mhp)).toFixed(2)] : 0, ks: arDeep(m.s, 2), ai: +(G.aimF || 0).toFixed(2), mv: G.moving ? 1 : 0, hop: (G.air > 0 ? Math.round(Math.sin((1 - G.air / G.airMax) * Math.PI) * G.airH) : 0) + (G.flyT > 0 ? Math.round(9 + Math.sin(T * 4) * 2) : 0), fl: G.flyT > 0 ? +G.flyT.toFixed(1) : 0, ar: G.air > 0 ? 1 : 0, x: Math.round(G.x), y: Math.round(G.y), f: G.face < 0 ? -1 : 1, rt: isRat() ? 1 : 0, h: m.h.id, hp: Math.round(Math.max(0, m.hp)), mx: Math.round(m.max), dd: AR.deadT > 0 ? 1 : 0, st: G.stealth > 0 && AR.revealT <= 0 && !m.s.praying && !m.s.dis ? 1 : 0, al: G.allies.filter(a => a.life > 0).slice(0, 8).map(a => [a.kind, Math.round(a.x), Math.round(a.y), (a.face || 1) < 0 ? -1 : 1]), bu: G.inBush ? 1 : 0, ai: G.air > 0 ? 1 : 0, fy: G.flyT > 0 ? 1 : 0, fo: G.fort ? 1 : 0, iv: G.inv > 0 ? 1 : 0, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0), lv: G.lvl, w: Math.round((G.walk || 0) * 10) / 10}); }
+function arSendState() { const m = M(); arSend({t: 's', wt: G.hut && G.hut.kind === 'watch' ? [Math.round(G.hut.x), Math.round(G.hut.y), +(G.hut.hp === undefined ? 1 : Math.max(0, G.hut.hp / G.hut.mhp)).toFixed(2)] : 0, ks: arDeep(m.s, 2), ai: +(G.aimF || 0).toFixed(2), mv: G.moving ? 1 : 0, hop: (G.air > 0 ? Math.round(Math.sin((1 - G.air / G.airMax) * Math.PI) * G.airH) : 0) + (G.flyT > 0 ? Math.round(9 + Math.sin(T * 4) * 2) : 0), fl: G.flyT > 0 ? +G.flyT.toFixed(1) : 0, ar: G.air > 0 ? 1 : 0, x: Math.round(G.x), y: Math.round(G.y), f: G.face < 0 ? -1 : 1, rt: isRat() ? 1 : 0, h: m.h.id, hp: Math.round(Math.max(0, m.hp)), mx: Math.round(m.max), dd: AR.deadT > 0 ? 1 : 0, st: G.stealth > 0 && AR.revealT <= 0 && !m.s.praying && !m.s.dis ? 1 : 0, al: G.allies.filter(a => a.life > 0).slice(0, 8).map(a => arPlain(a, 18)), bu: G.inBush ? 1 : 0, ai: G.air > 0 ? 1 : 0, fy: G.flyT > 0 ? 1 : 0, fo: G.fort ? 1 : 0, iv: G.inv > 0 ? 1 : 0, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0), lv: G.lvl, w: Math.round((G.walk || 0) * 10) / 10}); }
 function arGotHit(m) { if (!AR.on || AR.deadT > 0) return; let d = m.pct ? M().max * m.pct : m.d; if (!(d > 0)) return;
   if (!m.mon) { // another player hit me: never more than a slice of my health per second, so fights last
     const mx = M().max, room = Math.max(0, mx * AR_RULES.capBurst - AR.pb); d = Math.min(d, room); if (d <= 0) return; AR.pb += d;
-    AR.lastFrom = m.from; AR.lastHitT = G.t; const r = AR.R[m.from]; AR.hurtBy = {pid: m.from, t: 1.4}; if (r) { r.hitMeT = 1.4; if (r.proxy) r.proxy.flash = 0.1; }
+    AR.lastFrom = m.from; AR.lastHitT = G.t; (AR.hitBy = AR.hitBy || {})[m.from] = G.t; const r = AR.R[m.from]; AR.hurtBy = {pid: m.from, t: 1.4}; if (r) { r.hitMeT = 1.4; if (r.proxy) r.proxy.flash = 0.1; }
     arWord('-' + Math.round(d), G.x + (Math.random() - 0.5) * 10, G.y - 40, '#FF6A6A'); }
   else if (m.tw) { AR.hurtBy = {tower: 1, t: 1}; arWord('TOWER -' + Math.round(d), G.x, G.y - 40, '#FF9A6A'); }
   const inv = G.inv; if (inv > 0 && inv <= (AR.invLeft || 0) + 0.02) G.inv = 0; hurtMe(d, null, !!m.tw); if (G.inv > 0) { G.inv = Math.min(G.inv, 0.12); AR.invLeft = G.inv; } }
@@ -4318,7 +4318,7 @@ function arGotCC(m) { if (!AR.on || AR.deadT > 0 || G.fort || G.inv > 1) return;
   const st = Math.max(m.stun || 0, m.frozen || 0, m.dance || 0); if (st > 0 && AR.ccImm <= 0) { const t = Math.min(1, st); G.lock = Math.max(G.lock || 0, t); AR.ccImm = t + 1.6; arWord(m.charm ? 'CHARMED' : m.frozen ? 'FROZEN' : 'STUNNED', G.x, G.y - 44, m.charm ? '#FF7AA0' : '#85B7EB'); }
   if (m.slow > 0 || m.confuse > 0 || m.blind > 0) AR.slowT = Math.max(AR.slowT, Math.min(2, Math.max(m.slow || 0, (m.confuse || 0) * 0.5, (m.blind || 0) * 0.5)));
   if (m.px || m.py) { const l = Math.hypot(m.px, m.py), room = Math.max(0, 160 - AR.pushB), k = l > 0 ? Math.min(1, Math.min(60, room) / l) : 0; if (k > 0) { tryMove(G, m.px * k, m.py * k, G.air > 0); AR.pushB += l * k; } } }
-function arDied(m) { if (AR.host) { arStat(m.from).dn++; if (m.killer && m.killer !== m.from) arStat(m.killer).ko++; } const who = m.from === AR.id ? AR.me.name : (AR.R[m.from] || {}).name || '?', killer = m.killer === AR.id ? AR.me.name : m.killer && AR.R[m.killer] ? AR.R[m.killer].name : null;
+function arDied(m) { if (AR.host) { arStat(m.from).dn++; if (m.killer && m.killer !== m.from) arStat(m.killer).ko++; for (const id of m.as || []) if (id !== m.from) arStat(id).as++; } const who = m.from === AR.id ? AR.me.name : (AR.R[m.from] || {}).name || '?', killer = m.killer === AR.id ? AR.me.name : m.killer && AR.R[m.killer] ? AR.R[m.killer].name : null;
   arFeed(killer ? `${killer} took down ${who}` : `${who} fell`); if (m.killer === AR.id && m.from !== AR.id) { arXp(10); word('TAKEDOWN', G.x, G.y - 34, '#F09595'); sfx('bigkill'); }
   if (AR.host) { const vt = m.from === AR.id ? AR.team : (AR.R[m.from] || {}).team; if (vt !== undefined) AR.kills[1 - vt]++; } }
 function arFeed(s) { AR.feed.unshift({s, t: 6}); AR.feed.length = Math.min(AR.feed.length, 5); }
@@ -4329,6 +4329,8 @@ function arPlain(o, max) { const out = {}; let n = 0; for (const k in o) { if (k
 { const f0 = fx; fx = function (o) { const r = f0(o); if (AR.on && !AR.inNet && o && FX_SEND[o.k] && AR.fxq.length < 70 && (o.k !== 'p' || Math.random() < 0.3) && Math.abs(o.x - G.x) < 520 && Math.abs(o.y - G.y) < 360) AR.fxq.push(arPlain(o)); return r; }; }
 { const s0 = strike; strike = function (x, y, r, delay, dmg, o) { const res = s0(x, y, r, delay, dmg, o); if (AR.on && !AR.inNet && !(o && o.enemy)) AR.fxq.push({k: '_strike', x: Math.round(x), y: Math.round(y), r: Math.round(r), t: +delay.toFixed(2), col: (o && o.col) || '255,200,90'}); return res; }; }
 { const sh = shot; shot = function (o) { const s = sh(o); if (AR.on && !AR.inNet && !o.ghost && AR.fxq.length < 70) { const h = M().h; AR.fxq.push({k: '_shot', x: Math.round(s.x), y: Math.round(s.y), a: +s.a.toFixed(3), sp: Math.round(s.spd), l: +s.life.toFixed(2), s: s.spr || '', sc: s.sc || 1, r: Math.min(14, s.r || 3), c: h.col || '#FFF1B8', lob: s.lob ? 1 : 0, tx: s.tx, ty: s.ty, du: s.dur}); } return s; }; }
+/* thrown things that fly in an arc (Celeste's stars, Brine's cannonballs, bombs...) are sent too */
+{ const l0 = lob; lob = function (tx, ty, dur, o) { const s = l0(tx, ty, dur, o); if (AR.on && !AR.inNet && !(o && (o.ghost || o.net)) && AR.fxq.length < 70) AR.fxq.push({k: '_lob', sx: Math.round(s.sx), sy: Math.round(s.sy), tx: Math.round(tx), ty: Math.round(ty), du: +dur.toFixed(2), s: s.spr || '', sc: s.sc || 1, rot: s.rot || 0, arc: s.arc || 30, c: M().h.col || '#FFF1B8'}); return s; }; }
 const ZSKIP = {arworld: 1}, GROUNDZ = {rink: 1, puddle: 1, stone: 1, magma: 1, bush: 1};
 function arZones() { // send my new zones, and keep their position, size and life up to date
   for (const z of G.zones) { if (z.ghost || ZSKIP[z.k] || z.perm || !((ZONE[z.k] && ZONE[z.k].draw) || GROUNDZ[z.k])) continue; if (!z.__id) { z.__id = AR.zid++; z.__s = ''; }
@@ -4338,7 +4340,8 @@ function arGhostShot(m) { const o = {x: m.x, y: m.y, a: m.a, spd: m.sp, life: m.
   if (m.lob && m.tx !== undefined) { lob(m.tx, m.ty, m.du || 0.6, {dmg: 0, ghost: true, sx: m.x, sy: m.y, x: m.x, y: m.y, draw: o.draw, spr: o.spr}); return; } shot(o); }
 function arFx(m) { AR.inNet = true; try {
     if (m.k === 'feed') arFeed(m.s);
-    else if (m.k === 'v') { for (const o of m.L || []) { if (o.k === '_shot') arGhostShot(o); else if (o.k === '_strike') strike(o.x, o.y, o.r, o.t, 0, {col: o.col, ghost: 1}); else if (o.k === 'word') fx(Object.assign({}, o, {t: 0.8})); else { o.net = 1; fx(o); } }
+    else if (m.k === 'v') { for (const o of m.L || []) { if (o.k === '_lob') { const c = o.c, dr = o.s ? null : b => { const x = Math.round(b.x), y = Math.round(b.y - (b.hgt || 0)); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, 3, 0, TAU); ctx.fill(); }; lob(o.tx, o.ty, o.du, {sx: o.sx, sy: o.sy, x: o.sx, y: o.sy, spr: o.s || undefined, sc: o.sc, rot: o.rot, arc: o.arc, dmg: 0, net: true, draw: dr || undefined}); }
+      else if (o.k === '_shot') arGhostShot(o); else if (o.k === '_strike') strike(o.x, o.y, o.r, o.t, 0, {col: o.col, ghost: 1}); else if (o.k === 'word') fx(Object.assign({}, o, {t: 0.8})); else { o.net = 1; fx(o); } }
       for (const z of m.Z || []) arGhostZone(m.from, z); }
   } catch (e) {} finally { AR.inNet = false; } }
 /* ghost zones only show: they never hurt anything; they draw where the player who made them is */
@@ -4373,7 +4376,9 @@ function arTick(dt) { if (!AR.on || AR.over) return;
   if (AR.fangT > 0) AR.fangT -= dt; if (AR.shellT > 0) { AR.shellT -= dt; if (AR.shellT <= 0) for (const q of G.team) q.shield = 0; } if (AR.hurtBy) { AR.hurtBy.t -= dt; if (AR.hurtBy.t <= 0) AR.hurtBy = null; }
   const b = arBaseOf(AR.team);
   arMembers(dt);
-  if (AR.deadT > 0) { G.hut = {kind: 'ardead', x: b.x, y: b.y + 30}; G.hutT = 99; G.exitT = 0; G.inv = 1; G.stealth = 1; }
+  if (AR.deadT > 0) { G.hut = {kind: 'ardead', x: b.x, y: b.y + 30}; G.hutT = 99; G.exitT = 0; G.inv = 1; G.stealth = 1; AR.cam = AR.cam || {x: 0, y: 0};
+    let kx = (held.d || held.ArrowRight ? 1 : 0) - (held.a || held.ArrowLeft ? 1 : 0), ky = (held.s || held.ArrowDown ? 1 : 0) - (held.w || held.ArrowUp ? 1 : 0); if (AR.flip) kx = -kx; if (kx || ky) { AR.cam.x += kx * 320 * dt; AR.cam.y += ky * 320 * dt; arClampCam(); } }
+  else if (AR.cam && (AR.cam.x || AR.cam.y)) AR.cam = {x: 0, y: 0};
   else { const d = Math.hypot(G.x - b.x, G.y - b.y); // the fountain at home heals fast
     if (d < 70) for (const q of G.team) if (!q.down) q.hp = Math.min(q.max, q.hp + q.max * 0.18 * dt); }
   // tell my tower who is attacking my teammates under it
@@ -4399,7 +4404,7 @@ function arMembers(dt) { const b = arBaseOf(AR.team);
         if (AR.deadT > 0) { const old = M(); if (old !== q && old.__dn) { old.down = true; old.hp = 0; } AR.deadT = 0; G.hut = null; G.inv = 2; G.stealth = 0; G.ti = i; G.x = b.x - arSide(AR.team) * 30; G.y = b.y; toast(q.h.name + ' IS BACK IN THE FIGHT'); sfx('level'); }
         else if (G.team.length > 1) toast(q.h.name + ' IS READY: PRESS ' + (i + 1)); } } });
   if (AR.deadT > 0) { const left = G.team.map((q, i) => q.__dn ? AR.mt[i] : 99); AR.deadT = Math.max(0.01, Math.min(...left)); } }
-function arDownOne(q, i) { q.__dn = true; AR.mt[i] = arRespawn(); const m = {t: 'died', killer: G.t - (AR.lastHitT || -9) < 4 ? AR.lastFrom : null, x: Math.round(G.x), y: Math.round(G.y)}; arSend(m); m.from = AR.id; arDied(m); }
+function arDownOne(q, i) { q.__dn = true; AR.mt[i] = arRespawn(); const killer = G.t - (AR.lastHitT || -9) < 4 ? AR.lastFrom : null, as = Object.entries(AR.hitBy || {}).filter(([id, t]) => G.t - t < 6 && id !== killer).map(([id]) => id); AR.hitBy = {}; const m = {t: 'died', killer, as, x: Math.round(G.x), y: Math.round(G.y)}; arSend(m); m.from = AR.id; arDied(m); }
 function arStartDeath() { if (AR.deadT > 0) return; G.team.forEach((q, i) => { q.down = true; if (!q.__dn) arDownOne(q, i); }); AR.deadT = 1; M().down = false; M().hp = 1; toast('ALL YOUR HUNTERS ARE DOWN'); }
 function arStartDeathOld() { if (AR.deadT > 0) return; AR.deadT = Math.min(18, 5 + (G.lvl || 1) * 0.7); G.team.forEach(q => { q.down = true; q.hp = 1; }); M().down = false; const m = {t: 'died', killer: G.t - (AR.lastHitT || -9) < 4 ? AR.lastFrom : null, x: Math.round(G.x), y: Math.round(G.y)}; arSend(m); m.from = AR.id; arDied(m); toast(`DOWN! BACK IN ${Math.ceil(AR.deadT)}s`); }
 function arEnd(win, why, st) { if (AR.over) return; if (st) AR.stat = st; arVoiceStop(); arChatClose(); $a('#arComms').style.display = 'none'; AR.over = {win, why}; arFlush(); arShowEnd(win, why); }
@@ -4488,10 +4493,28 @@ function arVoiceButtons() { const m = $a('#arMicBtn'), s = $a('#arSpkBtn'); if (
    Only the world flips: the HUD and text stay readable, and left/right controls and mouse aim are flipped to match. */
 { const dg = drawGround; drawGround = function (cx, cy) { AR.flipNow = false; if (AR.on && AR.flip) { ctx.translate(cx, 0); ctx.translate(W + cx, 0); ctx.scale(-1, 1); AR.flipNow = true; } return dg(cx, cy); }; }
 { const t0 = txt; txt = function (s, x, y, size, col, align) { if (AR.flipNow) { x = W - x - 2 * TXO.x; align = align === 'left' ? 'right' : align === 'right' ? 'left' : align; } return t0(s, x, y, size, col, align); }; }
-function arMirrorInput(on) { if (!(AR.on && AR.flip)) return null; const sv = {a: held.a, d: held.d, L: held.ArrowLeft, R: held.ArrowRight, mx: mouse.x, jc: joy && joy.c ? joy.c.x : null, sk: skAim && skAim.c ? skAim.c.x : null};
+function arMirrorInput(on) { if (!(AR.on && AR.flip) || AR.mirD) return null; AR.mirD = 1; const sv = {a: held.a, d: held.d, L: held.ArrowLeft, R: held.ArrowRight, mx: mouse.x, jc: joy && joy.c ? joy.c.x : null, sk: skAim && skAim.c ? skAim.c.x : null};
   held.a = sv.d; held.d = sv.a; held.ArrowLeft = sv.R; held.ArrowRight = sv.L; mouse.x = Ww - mouse.x; if (sv.jc !== null) joy.c.x = 2 * joy.o.x - joy.c.x; if (sv.sk !== null) skAim.c.x = 2 * skAim.o.x - skAim.c.x; return sv; }
-function arUnmirror(sv) { if (!sv) return; held.a = sv.a; held.d = sv.d; held.ArrowLeft = sv.L; held.ArrowRight = sv.R; mouse.x = sv.mx; if (sv.jc !== null && joy && joy.c) joy.c.x = sv.jc; if (sv.sk !== null && skAim && skAim.c) skAim.c.x = sv.sk; }
-{ const d0 = draw; draw = function () { const sv = arMirrorInput(); try { return d0(); } finally { arUnmirror(sv); AR.flipNow = false; } }; }
+function arUnmirror(sv) { if (!sv) return; AR.mirD = 0; held.a = sv.a; held.d = sv.d; held.ArrowLeft = sv.L; held.ArrowRight = sv.R; mouse.x = sv.mx; if (sv.jc !== null && joy && joy.c) joy.c.x = sv.jc; if (sv.sk !== null && skAim && skAim.c) skAim.c.x = sv.sk; }
+{ const d0 = draw; draw = function () { const sv = arMirrorInput(), look = AR.on && AR.deadT > 0 && G && AR.cam && (AR.cam.x || AR.cam.y), gx = G && G.x, gy = G && G.y;
+    if (look) { G.x += AR.cam.x; G.y += AR.cam.y; } try { return d0(); } finally { if (look) { G.x = gx; G.y = gy; } arUnmirror(sv); AR.flipNow = false; } }; }
+/* while you are down you can drag the map (or use the arrow keys) to watch the fight */
+function arClampCam() { const b = arBaseOf(AR.team); if (!b || !AR.cam) return; const cx = b.x + AR.cam.x, cy = b.y + AR.cam.y, nx = Math.max(-LANE.LX - 60, Math.min(LANE.LX + 60, cx)), ny = Math.max(-LANE.FH, Math.min(LANE.FH, cy)); AR.cam.x = nx - b.x; AR.cam.y = ny - b.y; }
+cv.addEventListener('pointerdown', ev => { if (AR.on && AR.deadT > 0) AR.drag = {x: ev.clientX, y: ev.clientY}; });
+addEventListener('pointermove', ev => { if (!AR.drag || !(AR.on && AR.deadT > 0)) { AR.drag = null; return; } const k = Ww / (cv.clientWidth || 1); let dx = (ev.clientX - AR.drag.x) * k; const dy = (ev.clientY - AR.drag.y) * k; if (AR.flip) dx = -dx; AR.cam = AR.cam || {x: 0, y: 0}; AR.cam.x -= dx; AR.cam.y -= dy; AR.drag = {x: ev.clientX, y: ev.clientY}; arClampCam(); });
+addEventListener('pointerup', () => { AR.drag = null; }); addEventListener('pointercancel', () => { AR.drag = null; });
+for (const fn of ['pressAtk', 'releaseAtk', 'pressSkill', 'releaseSkill']) { const f0 = window[fn]; if (typeof f0 !== 'function') continue; const w = function (...a) { const sv = arMirrorInput(); try { return f0.apply(this, a); } finally { arUnmirror(sv); } }; try { eval(fn + ' = w'); } catch (e) {} }
+function arMini() { const b = MMB(), S_ = b.s, sx = S_ / (2 * (LANE.LX + 100)), sy = sx, cx = b.x + S_ / 2, cy = b.y + S_ / 2, P = (x, y) => [cx + x * sx, cy + y * sy];
+  if (!AR.miniC) { const w = Math.round(2 * (LANE.LX + 100) * sx), hh = Math.round(2 * (LANE.FH + 40) * sy), c = document.createElement('canvas'); c.width = w; c.height = hh; const g = c.getContext('2d'), col = {g: '#5FA14A', o: '#B8B4A8', w: '#4FB8D8', s: '#E8D49A', W: '#E6E2D2', B: '#3B7D2A', T: '#2E6A2A', f: '#4A8A3A', k: '#6A5A60', p: '#8A8A9A', r: '#8A8A9A', S: '#2A6FA0'};
+    for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) { const x = (i + 0.5) / sx - (LANE.LX + 100), y = (j + 0.5) / sy - (LANE.FH + 40); g.fillStyle = col[arTerr(Math.floor(x / TS), Math.floor(y / TS))] || '#5FA14A'; g.fillRect(i, j, 1, 1); } AR.miniC = c; }
+  ctx.fillStyle = '#2A6FA0'; ctx.fillRect(b.x - 1, b.y - 1, S_ + 2, S_ + 2); ctx.drawImage(AR.miniC, Math.round(cx - AR.miniC.width / 2), Math.round(cy - AR.miniC.height / 2));
+  const dot = (x, y, c, z) => { const [px, py] = P(x, y); ctx.fillStyle = '#2B2B2B'; ctx.fillRect(Math.round(px) - z, Math.round(py) - z, z * 2 + 1, z * 2 + 1); ctx.fillStyle = c; ctx.fillRect(Math.round(px) - z + 1, Math.round(py) - z + 1, z * 2 - 1, z * 2 - 1); };
+  for (const s of AR.S) if (!s.dead) dot(s.x, s.y, TEAMC[s.team], s.kind === 'base' ? 2 : 1);
+  for (const e of G.en) if (e.neutral && e.camp === undefined && !e.dead) dot(e.x, e.y, '#F2A54A', 1);
+  for (const r of Object.values(AR.R)) if (!r.dead && (r.team === AR.team || (!r.stealth && !r.bush))) dot(r.x, r.y, r.team === AR.team ? '#97C459' : '#E24B4A', 1);
+  if (AR.deadT <= 0) { const [px, py] = P(G.x, G.y); ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(px) - 1, Math.round(py) - 1, 3, 3); }
+  ctx.strokeStyle = G.night ? '#7F77DD' : '#FCCC3C'; ctx.lineWidth = 1; ctx.strokeRect(b.x - 0.5, b.y - 0.5, S_ + 1, S_ + 1); }
+{ const dm0 = drawMini; drawMini = function () { if (AR.on) return arMini(); return dm0(); }; }
 { const dm = drawMini; drawMini = function () { if (!(AR.on && AR.flip)) return dm(); const b = MMB(); ctx.save(); ctx.translate(2 * b.x + b.s, 0); ctx.scale(-1, 1); try { dm(); } finally { ctx.restore(); } }; }
 /* the arena's level cap is 15 */
 { const pk = pick; pick = function (d) { if (AR.on && !d.kind && (G.lvl || 1) >= 15) return; return pk(d); }; }
@@ -4569,14 +4592,15 @@ function arBaseArt(s) { const x = Math.round(s.x), y = Math.round(s.y), c = TEAM
       if (N) { txt(N.name, e.x, y - 6, 5, '#FFF1B8'); txt(BUFF[N.buff].txt.toUpperCase(), e.x, y - 13, 4, BUFF[N.buff].col); } return; }
     return dE(e); }; }
 ALLY.rmate = {draw(a) { arPlayerSprite(a, a.x, a.y); }};
-ALLY.rhelper = {draw(a) { const r = a.r, h = HUNTERS.find(q => q.id === r.hid) || HUNTERS[0], [k, x, y, f] = a.v;
+ALLY.rhelper = {draw(a) { const r = a.r, h = HUNTERS.find(q => q.id === r.hid) || HUNTERS[0], v = a.v, k = v.kind, x = Math.round(v.x), y = Math.round(v.y), f = v.face || 1;
   if (k === 'mclone') { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x - 6, y + 14, 12, 2); ctx.globalAlpha = 0.7; frame(r.rat ? h.rat : h.spr, Math.floor(T * 8) % 4, r.rat ? 32 : 24, 32, x, y, f < 0); ctx.globalAlpha = 1; ctx.strokeStyle = TEAMC[r.team]; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y + 14, 8, 3, 0, 0, TAU); ctx.stroke(); return; }
-  const A_ = ALLY[k]; if (A_ && A_.draw && k !== 'rmate' && k !== 'rfoe' && k !== 'rhelper' && k !== 'arstruct') { try { A_.draw({kind: k, x, y, face: f, life: 5, max: 5, walk: T * 6, ph: T}); } catch (e) {} } }};
+  const A_ = ALLY[k]; if (!A_ || !A_.draw || k === 'rmate' || k === 'rfoe' || k === 'rhelper' || k === 'arstruct') return;
+  const sv = {x: G.x, y: G.y, face: G.face}; G.x = r.x; G.y = r.y; G.face = r.face; try { A_.draw(Object.assign({walk: T * 6, ph: T}, v)); } catch (e) {} finally { Object.assign(G, sv); } }};
 ALLY.rfoe = {draw(a) { arPlayerSprite(a, a.x, a.y); }};
 ALLY.arstruct = {draw(a) { if (a.s.kind === 'base') arBaseArt(a.s); else arTowerArt(a.s); }};
 { const ti = typeof treeItems === 'function' ? treeItems : () => []; treeItems = function () { const L = ti(); if (!AR.on) return L;
     for (const r of Object.values(AR.R)) if (!r.dead && (r.team === AR.team || !r.bush || Math.hypot(r.x - G.x, r.y - G.y) < 44)) L.push({y: r.y, a: Object.assign(r, {kind: r.team === AR.team ? 'rmate' : 'rfoe'})});
-    for (const r of Object.values(AR.R)) if (!r.dead && r.al && !(r.stealth && r.team !== AR.team)) for (const v of r.al) L.push({y: v[2], a: {kind: 'rhelper', r, v}});
+    for (const r of Object.values(AR.R)) if (!r.dead && r.al && !(r.stealth && r.team !== AR.team)) for (const v of r.al) if (v && v.kind) L.push({y: v.y, a: {kind: 'rhelper', r, v}});
     for (const s of AR.S) L.push({y: s.y + 4, a: {kind: 'arstruct', s}}); return L; }; }
 ZONE.arworld = {draw() { if (!AR.on) return;
     const P = [AR.deadT <= 0 ? {x: G.x, y: G.y, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0)} : null].concat(Object.values(AR.R).filter(r => !r.dead && !(r.stealth && r.team !== AR.team)));
@@ -4606,7 +4630,7 @@ function arLaneMap(cx, y, w) { const h = 12, x0 = cx - w / 2, X = x => x0 + (AR.
     if (hb && hb.tower) txt('THE ENEMY TOWER IS SHOOTING YOU', W / 2, H - 40, 6, '#FF9A6A');
     const pr = AR.pb / (M().max * AR_RULES.capBurst); if (pr > 0.05) { ctx.fillStyle = `rgba(226,75,74,${(0.18 * pr).toFixed(2)})`; ctx.fillRect(0, 0, W, 4); ctx.fillRect(0, H - 4, W, 4); ctx.fillRect(0, 0, 4, H); ctx.fillRect(W - 4, 0, 4, H); }
     arChatDraw(); AR.feed.forEach((f, i) => txt(f.s, W - 6, 96 + i * 8, 5, `rgba(255,241,184,${Math.min(1, f.t).toFixed(2)})`, 'right'));
-    if (AR.deadT > 0) { ctx.fillStyle = 'rgba(10,8,24,0.55)'; ctx.fillRect(0, 0, W, H); txt('YOU WERE TAKEN DOWN', W / 2, H / 2 - 8, 10, '#F09595'); txt(`back at your base in ${Math.ceil(AR.deadT)}`, W / 2, H / 2 + 8, 7, '#FFF1B8'); } }; }
+    if (AR.deadT > 0) { ctx.fillStyle = 'rgba(10,8,24,0.22)'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(16,20,26,0.8)'; ctx.fillRect(W / 2 - 90, H - 62, 180, 30); txt('YOU WERE TAKEN DOWN', W / 2, H - 54, 8, '#F09595'); txt(`back in ${Math.ceil(AR.deadT)}s - ${TOUCH ? 'drag' : 'drag or use the arrows'} to look around`, W / 2, H - 41, 5, '#FFF1B8'); } }; }
 
 /* ===================== the lobby (plain web page on top of the game) ===================== */
 const $a = s => document.querySelector(s);
@@ -4713,9 +4737,9 @@ function arPlain_(g, s, x, y, u, cc) { const k = s + u + cc; AR.ptx = AR.ptx || 
 const esc_ = s => String(s || '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 function arShowEnd(win, why) { arShow('end'); AR.endT = performance.now() / 1000; const L = AR.lobby, st = AR.stat || {}, mine = win === AR.team;
   const sc = $a('#arScroll'); sc.classList.remove('open'); $a('#arScrollHint').textContent = 'TAP THE SCROLL TO SEE THE STATS';
-  const row = p => { const S_ = st[p.id] || {ko: 0, dn: 0, tw: 0, lv: 1}, hs = (p.heroes || []).map(id => HUNTERS.find(h => h.id === id)).filter(Boolean);
-    return `<tr><td class="who">${hs.map(h => `<img src="${arThumb(h)}" alt="">`).join('')}<span><b style="color:${p.team ? '#6A3FA0' : '#A8641E'}">${esc_(p.name)}</b><small>${hs.map(h => esc_(h.name)).join(' · ')}</small></span></td><td>${S_.ko}</td><td>${S_.dn}</td><td>${S_.tw}</td><td>${S_.lv}</td></tr>`; };
-  $a('#arStats').innerHTML = L ? [0, 1].map(t => `<tr class="th"><td colspan="5" style="color:${t ? '#6A3FA0' : '#A8641E'}">TEAM ${TEAMN[t]}${win === t ? ' · WINNERS' : ''}</td></tr>` + L.players.filter(p => p.team === t).map(row).join('')).join('') : '';
+  const row = p => { const S_ = Object.assign({ko: 0, dn: 0, as: 0, tw: 0, lv: 1}, st[p.id] || {}), hs = (p.heroes || []).map(id => HUNTERS.find(h => h.id === id)).filter(Boolean);
+    return `<tr><td class="who">${hs.map(h => `<img src="${arThumb(h)}" alt="">`).join('')}<span><b style="color:${p.team ? '#6A3FA0' : '#A8641E'}">${esc_(p.name)}</b><small>${hs.map(h => esc_(h.name)).join(' · ')}</small></span></td><td>${S_.ko}</td><td>${S_.dn}</td><td>${S_.as}</td><td>${S_.tw}</td><td>${S_.lv}</td></tr>`; };
+  $a('#arStats').innerHTML = L ? [0, 1].map(t => `<tr class="th"><td colspan="6" style="color:${t ? '#6A3FA0' : '#A8641E'}">TEAM ${TEAMN[t]}${win === t ? ' · WINNERS' : ''}</td></tr>` + L.players.filter(p => p.team === t).map(row).join('')).join('') : '';
   $a('#arSeal').textContent = win === null || win === undefined ? 'DRAW' : TEAMN[win]; $a('#arSeal').className = 'seal' + (mine ? '' : ' lost');
   sc.onclick = () => { sc.classList.toggle('open'); $a('#arScrollHint').textContent = sc.classList.contains('open') ? 'TAP TO ROLL IT UP' : 'TAP THE SCROLL TO SEE THE STATS'; try { sfx('pick'); } catch (e) {} };
   $a('#arAgain').style.display = AR.host ? '' : 'none'; $a('#arAgain').onclick = () => arSend({t: 'backToLobby'}); }
