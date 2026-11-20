@@ -67,7 +67,7 @@ setInterval(() => { for (const r of rooms.values()) for (const c of r.players.va
 
 /* ---------- rooms ---------- */
 const rooms = new Map(); let nextId = 1;
-const HEROES = ['supernan', 'bulwark', 'frost', 'volt', 'kage', 'squeak', 'luna', 'brine', 'samunai', 'regina', 'shade', 'mirror', 'sable', 'anu', 'celeste', 'ash'];
+const HEROES = ['supernan', 'bulwark', 'frost', 'volt', 'kage', 'squeak', 'luna', 'brine', 'samunai', 'regina', 'shade', 'mirror', 'sable', 'anu', 'celeste', 'ash', 'moss', 'wren', 'vitra'];
 const ROLES = ['guard', 'assassin', 'roamer'];
 const BAN_SECS = 20, PICK_SECS = 30, START_SECS = 5;
 function code() { const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s; do { s = 'RAT-'; for (let i = 0; i < 4; i++) s += L[Math.floor(Math.random() * L.length)]; } while (rooms.has(s)); return s; }

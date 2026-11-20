@@ -14,6 +14,7 @@ A Mobile Legends style **Brawl**: one straight lane through the Moon Meadow, two
 - If someone leaves during the draft, it goes back to the lobby.
 
 ## The match
+- **MOON sees the map mirrored**, like Mobile Legends: whichever team you are on, your base is on the left and you push right. Left/right keys and mouse aim flip to match.
 - The map is a short lane: SUN's base on the left, MOON's on the right. Each team has **three towers** in front of its base: a cone tower (three bolts), a sniper tower (aims a laser, then a burst of needles) and a cannon tower (lobs a shell at where you stand).
 - The lane is long, with a **big river** across the middle that doesn't slow anyone (Anu and Brine love it).
 - Every **26 seconds** a **line** of minions walks out of each base: snake, snake, big skeleton, eagle rider, eagle rider. When a rider falls, a fast-attacking mage skeleton gets up. If a team has lost both towers, the other team sends **double lines** (more XP to catch up). Minions get tougher over time.
