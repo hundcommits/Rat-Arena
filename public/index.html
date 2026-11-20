@@ -4116,7 +4116,7 @@ Object.assign(SFX, {
 .scroll tr.th td img.sc{margin:6px 0 2px}
 .codex .trow{display:flex;gap:10px;align-items:stretch;margin:8px 0}
 .codex .tname{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:900;font-size:11px;letter-spacing:.18em;padding:6px 3px;border:3px solid #1e140d;color:#2B2B2B;background:var(--t)}
-.t-COMMON{--t:#C8C4B8}.t-RARE{--t:#85B7EB}.t-EPIC{--t:#C49AF0}.t-LEGENDARY{--t:#F2B84A}
+.t-COMMON{--t:#C8C4B8}.t-RARE{--t:#85B7EB}.t-EPIC{--t:#C49AF0}.t-LEGENDARY{--t:#F2B84A}.c-TANK{--t:#B9B4A6}#arena .hero.c-TANK{--t:#B9B4A6}.info .tg.c-TANK{background:#B9B4A6}.c-FIGHTER{--t:#F09595}#arena .hero.c-FIGHTER{--t:#F09595}.info .tg.c-FIGHTER{background:#F09595}.c-ASSASSIN{--t:#C49AF0}#arena .hero.c-ASSASSIN{--t:#C49AF0}.info .tg.c-ASSASSIN{background:#C49AF0}.c-MARKSMAN{--t:#A8D27A}#arena .hero.c-MARKSMAN{--t:#A8D27A}.info .tg.c-MARKSMAN{background:#A8D27A}.c-MAGE{--t:#85B7EB}#arena .hero.c-MAGE{--t:#85B7EB}.info .tg.c-MAGE{background:#85B7EB}.c-SUPPORT{--t:#F2C45A}#arena .hero.c-SUPPORT{--t:#F2C45A}.info .tg.c-SUPPORT{background:#F2C45A}
 .codex .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;flex:1}
 .codex .tile{font:inherit;cursor:pointer;border:3px solid #1e140d;background:linear-gradient(#ffffff33,transparent 45%),var(--t);padding:5px 3px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;color:#2B2B2B;box-shadow:0 3px 0 #1e140d}
 .codex .tile img{width:36px;height:48px;image-rendering:pixelated}
@@ -4174,7 +4174,31 @@ Object.assign(SFX, {
 addEventListener('keydown', e => { const a = document.getElementById('arena'); if (a && a.style.display !== 'none') { e.stopImmediatePropagation(); if (e.key === 'Enter' && e.target && e.target.id === 'arChatLobbyIn' && window.arLobbySend) window.arLobbySend(); } }, true);
 addEventListener('keyup', e => { const a = document.getElementById('arena'); if (a && a.style.display !== 'none') e.stopImmediatePropagation(); }, true);
 </script>
-
+<style>
+/* hunter cards: a little room with a window onto the starry night; the class shows as a coloured ribbon, not a solid card */
+#arena .hero,.codex .tile{background:linear-gradient(#ffffff10,transparent 30%),repeating-linear-gradient(90deg,#3b2618 0 9px,#432c1c 9px 18px)!important;color:#F3E5C0!important;border:3px solid #1e140d;box-shadow:inset 0 0 0 2px #5a3a24,0 4px 0 #1e140d;position:relative;padding-bottom:6px}
+#arena .hero .por,.codex .tile .win{position:relative;width:64px;height:64px;border:4px solid #7a5232;outline:2px solid #1e140d;box-shadow:inset 0 0 0 1px #b0804f;
+  background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAABcUlEQVR4Xu3cTW6CQBgAUOjKXV30CB6ii16jHsPDeIKu7TW66CE4Qhd2x24arCSNplbKDA7wXmJIjIJ83/yDFAUAAPQS6mrTawecC3X10rzbbrmCYE2cpmbKQl2FKZ8fEaVoCkJdVRF/4vBC2O+GP2oa+/dNaF5p9v7tLubOj8F/nkIS2sDfr55ihuhM1ASU5XJdFMXrcTtaQwU/eg1ojD34rbbklw/rMmVJiloDpih87MbTB+Siz+godad7ahQ1oOvcpFystv8tDMvHbdImZ5QJKBerQYNyKmUzdNMTy9Vfo6CmY24/07fGSMAvLiXhs3o7fKtv8A+jxlxLYQ4udcgxgk8Hl5IBMDV9ZpMAAABAbO6AnhHJBgAAAACmwWonAD+lfNzC6B8IkloT/BD2IWUSRqPrf4RjEXyAeTE6AQDI0q2WBeA2PC8iI2aJGZnbRWx9HwCz5NpsZF3mFu5OyIAaAAAQm0U20prbsjUAANf6Au/xujqg4hbjAAAAAElFTkSuQmCC) var(--sx,0) var(--sy,0)/192px 192px,radial-gradient(ellipse at 50% 115%,#6d5ab855,transparent 60%),linear-gradient(#070a22,#151640 55%,#2a2160);image-rendering:pixelated;display:flex;align-items:flex-end;justify-content:center;overflow:visible;margin-top:2px}
+#arena .hero .por::before,.codex .tile .win::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;background:#7a5232;box-shadow:0 0 0 1px #1e140d55;z-index:0}
+#arena .hero .por::after,.codex .tile .win::after{content:'';position:absolute;left:-9px;right:-9px;bottom:-9px;height:6px;background:#8c6038;border:2px solid #1e140d;box-shadow:inset 0 2px 0 #b0804f;z-index:2}
+#arena .hero .por img,.codex .tile .win img{position:relative;z-index:1;margin-bottom:-2px;filter:drop-shadow(0 0 3px #c9c2ff66)}
+#arena .hero span,.codex .tile span{color:#F3E5C0!important;text-shadow:1px 1px 0 #1e140d!important;margin-top:8px}
+#arena .hero small{color:var(--t)!important;opacity:1!important;text-shadow:1px 1px 0 #1e140d}
+#arena .hero::before,.codex .tile::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;background:var(--t);border-bottom:2px solid #1e140d}
+#arena .hero:not(:disabled):hover .por,.codex .tile:hover .win{filter:brightness(1.25)}
+#arena .hero:nth-child(3n) .por,.codex .tile:nth-child(3n) .win{--sx:-60px;--sy:-30px}#arena .hero:nth-child(3n+1) .por,.codex .tile:nth-child(3n+1) .win{--sx:-110px;--sy:-96px}#arena .hero:nth-child(4n) .por,.codex .tile:nth-child(4n) .win{--sx:-20px;--sy:-140px}
+.codex .tile.on{outline:3px solid #FFF1B8}
+</style><style>#arena .heroes .tdiv{background:#1e140d!important;color:var(--t)!important;border:2px solid #1e140d;border-left:8px solid var(--t);box-shadow:inset 0 0 0 1px #5a3a24;text-shadow:1px 1px 0 #000}</style><style>#arena .hero .por::before,.codex .tile .win::before{left:0;right:0;top:15px;bottom:auto;width:auto;height:3px;margin-left:0;background:linear-gradient(90deg,transparent 0 30px,#7a5232 30px 34px,transparent 34px),#7a5232;box-shadow:0 1px 0 #1e140d66}
+.codex .tname{background:#1e140d!important;color:var(--t)!important;border-color:#1e140d;box-shadow:inset 0 0 0 1px #5a3a24;border-left:3px solid var(--t)}</style>
+<style>
+#arena .heroes.grouped{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;align-items:start}
+#arena .heroes.grouped .cgroup{display:flex;flex-direction:column;gap:8px;min-width:0}
+#arena .heroes.grouped .tdiv{margin-top:0}
+#arena .heroes.grouped .cgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.codex .cpair{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;align-items:start}
+.codex .cpair .tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:760px){#arena .heroes.grouped,.codex .cpair{grid-template-columns:1fr}}
+</style>
 <script>
 /* ===================== RAT ARENA: BRAWL =====================
    One straight lane through the Moon Meadow. Each team has two towers and a base.
@@ -4193,7 +4217,7 @@ const JWALLS = [[330, 120, 58, 30, 150], [190, 0, 54, -60, 60], [120, 300, 150, 
 const JBUSH = [[250, 205, 20], [450, 70, 22], [115, 235, 18], [565, 160, 18], [400, 190, 16], [90, 110, 16]];
 const AR_RULES = {matchSecs: 15 * 60, baseHP: 7000, towerHP: 3600, waveEvery: 26, firstWave: 5, hp: 400, pvp: 0.55, capBurst: 0.32, capPS: 0.2, towerRange: 140, baseRange: 160, neutralAt: 60, neutralBack: 120, buffSecs: 90};
 /* every hunter has a class: it sets their arena health and armor (armor takes that share off every hit, except tower shots) */
-const AR_CLASS = {supernan: 'FIGHTER', volt: 'MAGE', brine: 'FIGHTER', bulwark: 'TANK', samunai: 'FIGHTER', kage: 'ASSASSIN', frost: 'MAGE', squeak: 'SUPPORT', regina: 'MARKSMAN', shade: 'MARKSMAN', mirror: 'ASSASSIN', sable: 'MARKSMAN', luna: 'MAGE', anu: 'TANK', celeste: 'MAGE', ash: 'FIGHTER'};
+const AR_CLASS = {supernan: 'FIGHTER', volt: 'MAGE', brine: 'FIGHTER', bulwark: 'TANK', samunai: 'FIGHTER', kage: 'ASSASSIN', frost: 'MAGE', squeak: 'ASSASSIN', regina: 'MARKSMAN', shade: 'MARKSMAN', mirror: 'ASSASSIN', sable: 'MARKSMAN', luna: 'MAGE', anu: 'TANK', celeste: 'MAGE', ash: 'FIGHTER'};
 const CLASS_HP = {TANK: 720, FIGHTER: 480, ASSASSIN: 400, SUPPORT: 420, MARKSMAN: 350, MAGE: 340};
 const CLASS_ARMOR = {TANK: 0.25, FIGHTER: 0.1, ASSASSIN: 0.05, SUPPORT: 0.05, MARKSMAN: 0, MAGE: 0}, ARMOR_X = {bulwark: 0.35, brine: 0.15};
 const arClass = id => AR_CLASS[id] || 'FIGHTER', arHP = id => CLASS_HP[arClass(id)], arArmor = id => ARMOR_X[id] !== undefined ? ARMOR_X[id] : CLASS_ARMOR[arClass(id)];
@@ -4916,7 +4940,7 @@ function arScrollHead() { const th = $a('#arScroll thead tr'); if (!th) return;
 /* ---------- the hunters' roll: every hunter in order of rarity, and what they do ---------- */
 const AR_TIERS = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY'], CLASS_ORD = ['TANK', 'FIGHTER', 'ASSASSIN', 'MARKSMAN', 'MAGE', 'SUPPORT'];
 const arTierOf = h => (h.tier || 'COMMON').toUpperCase();
-const arSorted = () => HUNTERS.filter(h => AR_CLASS[h.id]).slice().sort((a, b) => AR_TIERS.indexOf(arTierOf(a)) - AR_TIERS.indexOf(arTierOf(b)) || CLASS_ORD.indexOf(arClass(a.id)) - CLASS_ORD.indexOf(arClass(b.id)) || a.name.localeCompare(b.name));
+const arSorted = () => HUNTERS.filter(h => AR_CLASS[h.id]).slice().sort((a, b) => CLASS_ORD.indexOf(arClass(a.id)) - CLASS_ORD.indexOf(arClass(b.id)) || a.name.localeCompare(b.name));
 const arRatThumbs = {};
 function arRatThumb(h) { if (arRatThumbs[h.id]) return arRatThumbs[h.id]; try { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(I[h.rat], 0, 0, 32, 32, 0, 0, 64, 64); return (arRatThumbs[h.id] = c.toDataURL()); } catch (e) { return ''; } }
 function arKit(h) { const was = AR.on; AR.on = true; try { const o = {}; for (const k of ['title', 'quote', 'basic', 'natk', 'pas', 'rp', 'ab1', 'ab2', 'ab3', 'lab1', 'lab2', 'lab3']) o[k] = h[k]; return o; } finally { AR.on = was; } }
@@ -4924,25 +4948,25 @@ function arHeroInfo(h) { const k = arKit(h), cl = arClass(h.id), sk = (lab, key,
   const split = t => { const i = (t || '').indexOf(':'); return i > 0 ? [t.slice(0, i), t.slice(i + 1).trim()] : ['', t || '']; };
   const [bn, bt] = split(k.basic), [nn, nt] = split(k.natk), [pn, pt] = split(k.pas), [rn, rt] = split(k.rp), [a1n, a1t] = split(k.ab1), [a2n, a2t] = split(k.ab2), [a3n, a3t] = split(k.ab3);
   return `<div class="ihead"><div class="pp"><img src="${arThumb(h)}" alt=""><img src="${arRatThumb(h)}" alt="" class="rat"></div><div><h3>${esc_(h.name)}</h3><div class="ttl">${esc_(k.title || '')}</div>
-    <div class="tags"><span class="tg t-${arTierOf(h)}">${arTierOf(h)}</span><span class="tg cls">${cl}</span><span class="tg">${arHP(h.id)} HEALTH</span>${arArmor(h.id) ? `<span class="tg">${Math.round(arArmor(h.id) * 100)}% ARMOR</span>` : ''}${AR_PCT[h.id] ? '<span class="tg">HITS TAKE A SHARE OF HEALTH</span>' : ''}</div>
+    <div class="tags"><span class="tg c-${cl}">${cl}</span><span class="tg">${arHP(h.id)} HEALTH</span>${arArmor(h.id) ? `<span class="tg">${Math.round(arArmor(h.id) * 100)}% ARMOR</span>` : ''}${AR_PCT[h.id] ? '<span class="tg">HITS TAKE A SHARE OF HEALTH</span>' : ''}</div>
     ${k.quote ? `<q>${esc_(k.quote)}</q>` : ''}</div></div>
     <div class="abs"><div class="col"><h4>By day</h4>${sk(bn || 'Attack', 'R', bt)}${sk(a3n.replace(/\s*\(.*\)/, ''), 'SPACE', a3t)}${sk(pn || 'Passive', '', pt)}</div>
     <div class="col night"><h4>By night</h4>${sk(nn || 'Attack', 'R', nt)}${sk(a1n.replace(/\s*\(.*\)/, ''), 'SPACE', a1t)}${sk(a2n.replace(/\s*\(.*\)/, ''), 'SHIFT', a2t)}${sk(rn || 'Passive', '', rt)}</div></div>`; }
 function arCodexBuild(box) { if (!box || box.__built) return; box.__built = true; const L = arSorted(); let html = '';
-  for (const t of AR_TIERS) { const hs = L.filter(h => arTierOf(h) === t); if (!hs.length) continue;
-    html += `<div class="trow"><div class="tname t-${t}">${t}</div><div class="tiles">` + hs.map(h => `<button class="tile t-${t}" data-id="${h.id}"><img src="${arThumb(h)}" alt=""><span>${esc_(h.name)}</span><small>${arClass(h.id)}</small></button>`).join('') + '</div></div>'; }
-  box.innerHTML = html + '<div class="info" style="display:none"></div>';
+  for (const t of CLASS_ORD) { const hs = L.filter(h => arClass(h.id) === t); if (!hs.length) continue;
+    html += `<div class="trow"><div class="tname c-${t}">${t}</div><div class="tiles">` + hs.map(h => `<button class="tile c-${t}" data-id="${h.id}"><div class="win"><img src="${arThumb(h)}" alt=""></div><span>${esc_(h.name)}</span></button>`).join('') + '</div></div>'; }
+  box.innerHTML = '<div class="cpair">' + html + '</div><div class="info" style="display:none"></div>';
   const info = box.querySelector('.info'), show = id => { const h = HUNTERS.find(q => q.id === id); if (!h) return; box.querySelectorAll('.tile').forEach(b => b.classList.toggle('on', b.dataset.id === id)); info.innerHTML = arHeroInfo(h); info.style.display = ''; };
   box.querySelectorAll('.tile').forEach(b => b.onclick = () => { if (b.classList.contains('on')) { b.classList.remove('on'); info.style.display = 'none'; return; } show(b.dataset.id); try { sfx('click'); } catch (e) {} });
   box.__show = show; }
 { const sh = arShow; arShow = function (id) { sh(id); if (id === 'home') { const go = () => { if (typeof booted !== 'undefined' && booted) arCodexBuild($a('#arCodex')); else setTimeout(go, 300); }; go(); } }; }
-/* the draft pool: grouped by rarity, ordered by class, and the hunter you point at is explained below */
+/* the draft pool: grouped by class, and the hunter you point at is explained below */
 { const rr0 = arRenderRoom; arRenderRoom = function () { const r = rr0.apply(this, arguments); try { arPoolSort(); } catch (e) {} return r; }; }
 function arPoolSort() { const grid = $a('#arHeroes'); if (!grid) return; const btns = [...grid.querySelectorAll('button.hero')]; if (!btns.length) return; const byName = new Map(HUNTERS.map(h => [h.name, h]));
   const items = btns.map(b => ({b, h: byName.get(b.querySelector('span') && b.querySelector('span').textContent)})).filter(q => q.h); const ord = arSorted().map(h => h.id);
-  items.sort((a, b) => ord.indexOf(a.h.id) - ord.indexOf(b.h.id)); grid.innerHTML = ''; let last = null;
-  for (const {b, h} of items) { const t = arTierOf(h); if (t !== last) { const d = document.createElement('div'); d.className = 'tdiv t-' + t; d.textContent = t; grid.appendChild(d); last = t; }
-    const sm = b.querySelector('small'); if (sm) sm.textContent = arClass(h.id); grid.appendChild(b);
+  items.sort((a, b) => ord.indexOf(a.h.id) - ord.indexOf(b.h.id)); grid.innerHTML = ''; grid.classList.add('grouped'); let last = null, box = null;
+  for (const {b, h} of items) { const t = arClass(h.id); if (t !== last) { const g = document.createElement('div'); g.className = 'cgroup c-' + t; const d = document.createElement('div'); d.className = 'tdiv c-' + t; d.textContent = t; box = document.createElement('div'); box.className = 'cgrid'; g.appendChild(d); g.appendChild(box); grid.appendChild(g); last = t; }
+    const sm = b.querySelector('small'); if (sm) sm.textContent = arClass(h.id); box.appendChild(b);
     const tell = () => { const box = $a('#arPoolInfo'); if (box) { box.innerHTML = arHeroInfo(h); box.style.display = ''; } };
     b.addEventListener('mouseenter', tell); b.addEventListener('focus', tell);
     if (b.disabled && !b.classList.contains('ban') && !b.classList.contains('taken') && !b.classList.contains('mine')) { b.disabled = false; b.classList.add('look'); b.onclick = ev => { ev.preventDefault(); tell(); }; } } }
@@ -5547,9 +5571,9 @@ function arRenderRoom() { const L = AR.lobby; if (!L) return; const me = arMe();
   $a('#arSkipBan').style.display = myTurn && cur.type === 'ban' ? '' : 'none'; $a('#arSkipBan').onclick = () => arSend({t: 'act', hero: 'skip'});
   const bans = D ? D.bans.filter(b => b !== 'skip') : [], picked = {}; for (const p of L.players) for (const h of p.heroes) picked[h] = p;
   $a('#arPickTitle').textContent = myTurn ? (cur.type === 'ban' ? 'BAN ONE' : 'PICK ONE') : 'HUNTERS';
-  const grid = $a('#arHeroes'); grid.classList.toggle('pick', !!myTurn); grid.innerHTML = ''; for (const h of HUNTERS) { const b = document.createElement('button'), isB = bans.includes(h.id), pk = picked[h.id];
-    b.className = `hero t-${h.tier || 'COMMON'}` + (isB ? ' ban' : '') + (pk ? (pk.id === me.id ? ' mine' : ' taken') : ''); b.disabled = !myTurn || isB || !!pk; b.title = `${h.name}: ${h.title || ''}`;
-    b.innerHTML = `<div class="por"><img src="${arThumb(h)}" alt=""></div><span>${esc_(h.name)}</span><small>${esc_(h.tier || '')}</small>` + (isB ? '<em class="tag">BANNED</em>' : pk ? `<em class="tag" style="background:${TEAMC[pk.team]};color:#2B2B2B">${esc_(pk.name)}</em>` : '');
+  const grid = $a('#arHeroes'); grid.classList.toggle('pick', !!myTurn); grid.innerHTML = ''; for (const h of arSorted()) { const b = document.createElement('button'), isB = bans.includes(h.id), pk = picked[h.id];
+    b.className = `hero c-${arClass(h.id)}` + (isB ? ' ban' : '') + (pk ? (pk.id === me.id ? ' mine' : ' taken') : ''); b.disabled = !myTurn || isB || !!pk; b.title = `${h.name}: ${h.title || ''}`;
+    b.innerHTML = `<div class="por"><img src="${arThumb(h)}" alt=""></div><span>${esc_(h.name)}</span><small>${arClass(h.id)}</small>` + (isB ? '<em class="tag">BANNED</em>' : pk ? `<em class="tag" style="background:${TEAMC[pk.team]};color:#2B2B2B">${esc_(pk.name)}</em>` : '');
     b.onclick = () => { if (!b.disabled) { arSend({t: 'act', hero: h.id}); sfx && sfx('pick'); } }; grid.appendChild(b); } }
 
 /* ---------- the lobby stages: a little pixel scene above the cards ---------- */
