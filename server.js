@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 const TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.pdf': 'application/pdf'};
-const MAX = {'1v1': 2, '2v2': 4, '3v3': 6};
+const MAX = {'1v1': 2, '2v2': 4, '3v3': 6, 'practice': 4};   // practice: 1 to 4 players on SUN, nobody on MOON
 
 /* ---------- web pages ---------- */
 const server = http.createServer((req, res) => {
@@ -67,21 +67,21 @@ setInterval(() => { for (const r of rooms.values()) for (const c of r.players.va
 
 /* ---------- rooms ---------- */
 const rooms = new Map(); let nextId = 1;
-const HEROES = ['supernan', 'bulwark', 'frost', 'volt', 'kage', 'squeak', 'luna', 'brine', 'samunai', 'regina', 'shade', 'mirror', 'sable', 'anu', 'celeste', 'ash', 'moss', 'wren', 'vitra'];
+const HEROES = ['supernan', 'bulwark', 'frost', 'volt', 'kage', 'squeak', 'luna', 'brine', 'samunai', 'regina', 'shade', 'mirror', 'sable', 'anu', 'celeste', 'ash', 'moss', 'wren', 'vitra', 'gabriela', 'kampana', 'sinag', 'pearl', 'rosalind'];
 const ROLES = ['guard', 'assassin', 'roamer'];
 const BAN_SECS = 20, PICK_SECS = 30, START_SECS = 5;
 function code() { const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s; do { s = 'RAT-'; for (let i = 0; i < 4; i++) s += L[Math.floor(Math.random() * L.length)]; } while (rooms.has(s)); return s; }
 function hello(c) { c.id = 'p' + (nextId++); send(c, {t: 'hello', id: c.id}); }
 const team = (r, t) => [...r.players.values()].filter(p => p.team === t);
-const full = r => r.players.size === MAX[r.mode] && team(r, 0).length === team(r, 1).length;
+const full = r => r.mode === 'practice' ? r.players.size >= 1 && team(r, 1).length === 0 : r.players.size === MAX[r.mode] && team(r, 0).length === team(r, 1).length;
 function lobby(r) { const list = [...r.players.values()].map(p => ({id: p.id, name: p.name, team: p.team, role: p.role, heroes: p.heroes, host: p.id === r.host}));
   const D = r.draft && {seq: r.draft.seq, i: r.draft.i, bans: r.draft.bans, left: Math.max(0, Math.ceil((r.draft.until - Date.now()) / 1000))};
   for (const p of r.players.values()) send(p, {t: 'lobby', code: r.code, mode: r.mode, started: r.started, host: r.host, phase: r.phase, full: full(r), max: MAX[r.mode], draft: D, players: list}); }
 /* ---------- the draft, MOBA style: bans and picks take turns, one player at a time, each with a timer ---------- */
 function startDraft(r) {
-  const T0 = team(r, 0), T1 = team(r, 1), per = r.mode === '3v3' ? 1 : 2, nb = Math.max(T0.length, T1.length), seq = []; // every player bans one hunter; 2 hunters each in 2v2, 1 in 3v3
+  const T0 = team(r, 0), T1 = team(r, 1), per = 1, nb = Math.max(T0.length, T1.length), seq = []; // every player bans one hunter; 2 hunters each in 2v2, 1 in 3v3
   // bans alternate SUN, MOON, SUN, MOON...; each team's bans go round its players
-  for (let k = 0; k < nb; k++) { seq.push({type: 'ban', team: 0, pid: T0[k % T0.length].id}); seq.push({type: 'ban', team: 1, pid: T1[k % T1.length].id}); }
+  if (T1.length) for (let k = 0; k < nb; k++) { seq.push({type: 'ban', team: 0, pid: T0[k % T0.length].id}); seq.push({type: 'ban', team: 1, pid: T1[k % T1.length].id}); }
   // picks snake: SUN 1, MOON 2, SUN 2, MOON 2, ... so nobody gets two first picks in a row; each team's picks go round its players
   const order = [], left = [T0.length * per, T1.length * per]; let t = 0, step = 1; while (left[0] + left[1] > 0) { for (let k = 0; k < step && left[t] > 0; k++) { order.push(t); left[t]--; } t = 1 - t; step = 2; }
   const cnt = [0, 0]; for (const tt of order) { const T = tt ? T1 : T0; seq.push({type: 'pick', team: tt, pid: T[Math.floor(cnt[tt]++ / per) % T.length].id}); }
@@ -99,7 +99,7 @@ function act(r, pid, hero) { const D = r.draft; if (r.phase !== 'draft') return;
   nextTurn(r); }
 function autoAct(r) { if (r.phase !== 'draft') return; const s = r.draft.seq[r.draft.i]; if (s.type === 'ban') return act(r, s.pid, 'skip'); const free = HEROES.filter(h => !taken(r).has(h)); act(r, s.pid, free[Math.floor(Math.random() * free.length)]); }
 function startMatch(r) { if (r.phase !== 'done' || r.started) return; r.started = true; const players = [...r.players.values()].map(p => ({id: p.id, name: p.name, team: p.team, role: p.role, heroes: p.heroes}));
-  for (const p of r.players.values()) send(p, {t: 'start', mode: r.mode, host: r.host, players, seed: Math.floor(Math.random() * 1e9)}); }
+  for (const p of r.players.values()) send(p, {t: 'start', mode: r.mode, host: r.host, players, seed: Math.floor(Math.random() * 1e9), minions: r.minions !== false}); }
 function resetLobby(r, why) { if (r.draft) clearTimeout(r.draft.timer); r.draft = null; r.phase = 'lobby'; r.started = false; for (const p of r.players.values()) p.heroes = []; if (why) for (const p of r.players.values()) send(p, {t: 'note', msg: why}); }
 function freeRole(r, c) { const used = team(r, c.team).filter(p => p !== c).map(p => p.role); return ROLES.find(x => !used.includes(x)) || 'roamer'; }
 function leave(c) { const r = c.room && rooms.get(c.room); c.room = null; if (!r) return; r.players.delete(c.id);
@@ -110,13 +110,14 @@ function leave(c) { const r = c.room && rooms.get(c.room); c.room = null; if (!r
 function onMessage(c, text) {
   let m; try { m = JSON.parse(text); } catch (e) { return; }
   if (!m || typeof m.t !== 'string') return;
-  if (m.t === 'create') { if (c.room) leave(c); const r = {code: code(), mode: MAX[m.mode] ? m.mode : '2v2', host: c.id, players: new Map(), started: false, phase: 'lobby', draft: null}; rooms.set(r.code, r);
+  if (m.t === 'create') { if (c.room) leave(c); const r = {code: code(), mode: MAX[m.mode] ? m.mode : '2v2', host: c.id, players: new Map(), started: false, phase: 'lobby', draft: null, minions: m.minions !== false}; rooms.set(r.code, r);
     Object.assign(c, {name: String(m.name || 'Hunter').slice(0, 14), team: 0, role: 'guard', heroes: [], room: r.code}); r.players.set(c.id, c); send(c, {t: 'joined', code: r.code, id: c.id, host: true, mode: r.mode}); lobby(r); return; }
   if (m.t === 'join') { const r = rooms.get(String(m.code || '').toUpperCase().trim()); if (!r) return send(c, {t: 'err', msg: 'No room with that code'}); if (r.started || r.phase !== 'lobby') return send(c, {t: 'err', msg: 'That room is already drafting or playing'}); if (r.players.size >= MAX[r.mode]) return send(c, {t: 'err', msg: 'That room is full'});
     if (c.room) leave(c); const n0 = team(r, 0).length, n1 = team(r, 1).length;
-    Object.assign(c, {name: String(m.name || 'Hunter').slice(0, 14), team: n0 <= n1 ? 0 : 1, heroes: [], room: r.code}); c.role = freeRole(r, c); r.players.set(c.id, c); send(c, {t: 'joined', code: r.code, id: c.id, host: false, mode: r.mode}); lobby(r); return; }
+    Object.assign(c, {name: String(m.name || 'Hunter').slice(0, 14), team: r.mode === 'practice' ? 0 : n0 <= n1 ? 0 : 1, heroes: [], room: r.code}); c.role = freeRole(r, c); r.players.set(c.id, c); send(c, {t: 'joined', code: r.code, id: c.id, host: false, mode: r.mode}); lobby(r); return; }
   const r = c.room && rooms.get(c.room); if (!r) return;
   if (m.t === 'set') { if (r.phase !== 'lobby') return; const per = MAX[r.mode] / 2;
+    if (r.mode === 'practice' && m.team === 1) { lobby(r); return; }
     if ((m.team === 0 || m.team === 1) && m.team !== c.team && team(r, m.team).length < per) { c.team = m.team; c.role = freeRole(r, c); }
     if (ROLES.includes(m.role) && !team(r, c.team).some(p => p !== c && p.role === m.role)) c.role = m.role;
     lobby(r); return; }
