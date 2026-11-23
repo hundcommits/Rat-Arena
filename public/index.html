@@ -4472,9 +4472,14 @@ function arNeutralTick(e, dt) { e.flash = Math.max(0, (e.flash || 0) - dt); e.ph
   let tg = null, bd = small ? 70 : 95; for (const p of arAll()) { if (p.dead || p.stealth) continue; const d = Math.hypot(p.x - e.x, p.y - e.y), dh = Math.hypot(p.x - H_.x, p.y - H_.y); if (dh < (small ? 100 : 130) && d < bd) { bd = d; tg = p; } }
   if (!tg || home > (small ? 110 : 140)) { if (home > 4) { const o = {x: e.x, y: e.y}; tryMove(o, (H_.x - e.x) / home * 50 * dt, (H_.y - e.y) / home * 50 * dt, false); e.x = o.x; e.y = o.y; } if (!tg && G.t - (e.hitT || -9) > 3) e.hp = Math.min(e.max, e.hp + e.max * 0.03 * dt); return; }
   e.face = tg.x >= e.x ? 1 : -1; if (bd > e.r + 10) { const o = {x: e.x, y: e.y}; tryMove(o, (tg.x - e.x) / bd * 34 * dt, (tg.y - e.y) / bd * 34 * dt, false); e.x = o.x; e.y = o.y; }
-  else if (e.acd <= 0) { e.acd = small ? 1 : 1.2; fx({k: 'swipe', x: e.x + e.face * 10, y: e.y - 4, f: e.face, t: 0.2}); arDamage({o: tg, kind: 'p'}, e.mdmg, null); }
+  else if (e.acd <= 0) { e.acd = small ? 1 : 1.2; arBeastHit(e, tg); arDamage({o: tg, kind: 'p'}, e.mdmg, null); }
   if (!small && e.slamT <= 0) { e.slamT = 6; const c = e.k === 'cobra' ? '151,196,89' : e.k === 'warden' ? '230,220,200' : '133,183,235'; fx({k: 'pulse', x: e.x, y: e.y, r: 60, t: 0.5, t0: 0.5, col: c}); fx({k: 'boom', x: e.x, y: e.y, r: 34, t: 0.4, t0: 0.4, col: c});
     for (const p of arAll()) if (!p.dead && Math.hypot(p.x - e.x, p.y - e.y) < 60) arDamage({o: p, kind: 'p'}, e.mdmg * 1.4, null); } }
+// each jungle monster strikes its own way: imp and bat rake with claws, cobra and snakes bite, crabs pinch, the Lord slams
+const AR_BEAST = {imp: ['claw', '255,140,60'], bat: ['claw', '190,140,255'], cobra: ['bite', '150,230,90'], bsnake: ['bite', '120,200,110'], crab: ['pinch', '240,120,90'], gcrab: ['pinch', '255,150,110'], warden: ['slam', '230,220,200']};
+function arBeastHit(e, tg) { const b = AR_BEAST[e.k] || AR_BEAST[e.kind] || ['claw', '230,220,200'], a = Math.atan2(tg.y - e.y, tg.x - e.x);
+  if (b[0] === 'slam') { fx({k: 'pulse', x: tg.x, y: tg.y, r: 24, t: 0.3, t0: 0.3, col: b[1]}); sparks(tg.x, tg.y - 2, 6, '#E8DCC0', '#8A7A5A', 70); return; }
+  fx({k: 'wsw', wp: b[0] === 'pinch' ? 'pinch' : b[0], x: tg.x - Math.cos(a) * 6, y: tg.y - 8, a, R: b[0] === 'claw' ? 20 : b[0] === 'pinch' ? 24 : 16, t: 0.26, t0: 0.26, col: b[1]}); }
 function arSpawnNeutral(k, x, y, o) { const N = NEUTRAL[k], at = N ? N.at : {x, y}, e = arSpawn(k, at.x, at.y, {neutral: 1}); e.neutral = 1; e.home = {x: at.x, y: at.y}; e.acd = 1; e.slamT = 4; e.noDrop = 1; e.boss = false; e.team = 2;
   if (N) { e.hp = e.max = Math.round(N.hp * (1 + AR.t / 900)); e.mdmg = N.dmg * (1 + AR.t / 700); arBroadcastFeed(`${N.name} has appeared`); } else Object.assign(e, o); return e; }
 function arSpawnCamp(C) { const grow = 1 + AR.t / 750;   // +8% health a minute
@@ -6368,7 +6373,17 @@ function arDrawSwing(f) { const p = 1 - f.t / f.t0, R = f.R, al = Math.min(1, f.
     for (let i = 0; i < 8; i++) { const an = i * TAU / 8 + 0.3, r1 = 5 + q * 8, r2 = r1 + 4 + q * 6; ctx.strokeStyle = `rgba(255,240,200,${al2.toFixed(2)})`; ctx.beginPath(); ctx.moveTo(hx + Math.cos(an) * r1, hy + Math.sin(an) * r1 * 0.7); ctx.lineTo(hx + Math.cos(an) * r2, hy + Math.sin(an) * r2 * 0.7); ctx.stroke(); }
     for (let i = 0; i < 6; i++) { ctx.fillStyle = `rgba(190,170,130,${(al2 * 0.8).toFixed(2)})`; ctx.beginPath(); ctx.arc(hx - dir * (2 + i * 3) * q, 14 - q * 3 - (i % 2) * 2, 2 + q * 2, 0, TAU); ctx.fill(); }
     ctx.restore(); return; }
-  if (f.wp === 'claw' || f.wp === 'bite') {
+  if (f.wp === 'pinch') { const cl = Math.min(1, p * 2.4), fade = Math.max(0, 1 - Math.max(0, p - 0.5) / 0.5), op = 0.9 - 0.75 * cl;
+    for (const sg of [-1, 1]) { ctx.strokeStyle = `rgba(43,43,43,${fade})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, R * 0.55, f.a + sg * op - 0.5 * sg, f.a + sg * op + 0.3 * sg, sg < 0); ctx.stroke();
+      ctx.strokeStyle = `rgba(${f.col},${fade})`; ctx.lineWidth = 2; ctx.stroke(); }
+    if (cl >= 1) { ctx.fillStyle = `rgba(255,255,255,${fade})`; const [x, y] = pt(f.a, R * 0.55); ctx.fillRect(x - 1, y - 1, 3, 3); } ctx.restore(); return; }
+  if (f.wp === 'bite') { // two rows of fangs snapping shut on the target
+    const cl = Math.min(1, p * 2.8), fade = p < 0.5 ? 1 : Math.max(0, 1 - (p - 0.5) / 0.5), gap = Math.round(9 * (1 - cl)) + 1, wd = Math.round(R * 0.9);
+    for (const sg of [-1, 1]) { const y0 = sg * gap; ctx.fillStyle = `rgba(43,43,43,${fade})`; ctx.fillRect(-wd / 2 - 1, y0 + (sg < 0 ? -3 : 0), wd + 2, 3);
+      ctx.fillStyle = `rgba(${f.col},${fade})`; ctx.fillRect(-wd / 2, y0 + (sg < 0 ? -2 : 0), wd, 2);
+      for (let i = 0; i < 4; i++) { const x = -wd / 2 + 2 + i * (wd - 4) / 3; ctx.fillStyle = `rgba(255,255,255,${fade})`; ctx.beginPath(); ctx.moveTo(x - 1.5, y0); ctx.lineTo(x + 1.5, y0); ctx.lineTo(x, y0 - sg * 4); ctx.closePath(); ctx.fill(); } }
+    if (cl >= 1 && p < 0.6) { ctx.fillStyle = `rgba(${f.col},0.8)`; ctx.fillRect(-2, -1, 4, 2); } ctx.restore(); return; }
+  if (f.wp === 'claw') {
     // three tapered claw scratches seen from the side: they rake down and forward in the direction the rat faces
     const dir = Math.cos(f.a) >= 0 ? 1 : -1, dn = Math.max(-0.6, Math.min(0.6, Math.sin(f.a))) * R * 0.5, grow = Math.min(1, p * 2.6), fade = p < 0.45 ? 1 : Math.max(0, 1 - (p - 0.45) / 0.55);
     const bz = (P0, P1, P2, t) => [(1 - t) * (1 - t) * P0[0] + 2 * (1 - t) * t * P1[0] + t * t * P2[0], (1 - t) * (1 - t) * P0[1] + 2 * (1 - t) * t * P1[1] + t * t * P2[1]];
@@ -6509,9 +6524,9 @@ function arAutoPose(rat) { if (AR.myPose && AR.myPose.t === G.t) return; const k
 const AR_CLAWC = {shade: '170,160,255', ash: '255,170,90', kage: '200,120,255', mirror: '206,203,246', samunai: '140,200,255', supernan: '255,220,120', luna: '200,220,255', brine: '120,220,220', squeak: '255,200,220',
   regina: '255,215,90', sable: '150,230,120', frost: '180,240,255', celeste: '255,240,200', volt: '255,255,120', vitra: '255,170,120', wren: '210,180,140', anu: '255,220,150', bulwark: '220,200,170'};
 Object.assign(AR_BITE, AR_CLAWC);
-{ const f0 = fx; fx = function (o) { if (AR.on && o && (o.k === 'swipe' || o.k === 'claw') && !AR.inNet && isRat() && Math.abs(o.x - G.x) < 40 && Math.abs(o.y - G.y) < 30) { const id = M().h.id;
+{ const f0 = fx; fx = function (o) { if (AR.on && o && (o.k === 'swipe' || o.k === 'claw') && !AR.inNet && AR.myAct > 0 && isRat() && Math.abs(o.x - G.x) < 40 && Math.abs(o.y - G.y) < 30) { const id = M().h.id;
       arAutoPose(true); return f0({k: 'wsw', wp: 'claw', hid: id, x: G.x, y: G.y - 4, a: o.a !== undefined ? o.a : (o.f || 1) > 0 ? 0 : Math.PI, R: 32, t: 0.26, t0: 0.26, col: AR_CLAWC[id] || '230,230,230'}); }
-    if (AR.on && o && o.k === 'swipe' && !AR.inNet && !isRat() && Math.abs(o.x - G.x) < 40 && Math.abs(o.y - G.y) < 30) { const id = M().h.id; arAutoPose(false);
+    if (AR.on && o && o.k === 'swipe' && !AR.inNet && AR.myAct > 0 && !isRat() && Math.abs(o.x - G.x) < 40 && Math.abs(o.y - G.y) < 30) { const id = M().h.id; arAutoPose(false);
       return f0({k: 'wsw', wp: 'kampilan', x: G.x, y: G.y - 2, a: (o.f || 1) > 0 ? 0 : Math.PI, R: 28, sw: (o.f || 1) > 0 ? 1 : -1, t: 0.18, t0: 0.18, col: AR_CLAWC[id] || '230,230,230'}); }
     return f0.apply(this, arguments); }; }
 { const K = KIT.brine, tk = K.tick; K.tick = function (m, dt, on, rat) { if (tk) tk.call(this, m, dt, on, rat); if (AR.on && on) { const s = m.s; if (s.cl > 0) s.cl -= dt; if (s.hc > 0) s.hc -= dt; } }; }
@@ -6577,15 +6592,19 @@ AR.dumHit = false;
 function arTopBtns() { if (!AR.on) return; const L = []; const quitC = AR.quitT > G.t;
   L.push({id: 'quit', t: quitC ? 'SURE?' : 'QUIT', c: quitC ? '#C25454' : 'rgba(16,20,26,0.85)'});
   if (AR.practice) { L.push({id: 'hero', t: 'HUNTER', c: 'rgba(16,20,26,0.85)'}); L.push({id: 'dum', t: AR.dumHit ? 'DUMMIES HIT' : 'DUMMIES SOFT', c: AR.dumHit ? '#8A4A1E' : 'rgba(16,20,26,0.85)'}); }
-  AR.topBtns = []; L.forEach((b, i) => { const x = 73, y = 4 + i * 9, w = 32, h = 7; ctx.fillStyle = '#2B2B2B'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2); ctx.fillStyle = b.c; ctx.fillRect(x, y, w, h); txt(b.t, x + w / 2, y + 3.5, 3, '#F3EABC'); AR.topBtns.push({x, y, w, h, id: b.id}); }); }
+  AR.topBtns = []; L.forEach((b, i) => { const x = 73, y = 4 + i * 9, w = 32, h = 7; ctx.fillStyle = '#2B2B2B'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2); ctx.fillStyle = b.c; ctx.fillRect(x, y, w, h); txt(b.t, x + w / 2, y + 3.5, 3, '#F3EABC'); const T = ctx.getTransform(); AR.topCv = ctx.canvas; AR.topBtns.push({x: T.a * x + T.e, y: T.d * y + T.f, w: T.a * w, h: T.d * h, id: b.id}); }); }
 { const dmn = drawMini; drawMini = function () { const r = dmn.apply(this, arguments); if (AR.on) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.restore(); arTopBtns(); } return r; }; }
-addEventListener('pointerdown', ev => { if (!AR.on || typeof screen === 'undefined' || screen !== 'play' || AR.shopOpen || !AR.topBtns) return; const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * Ww, y = (ev.clientY - r.top) / r.height * Hw;
-  const b = AR.topBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y - 1 && y <= q.y + q.h + 1); if (!b) return; ev.stopImmediatePropagation(); ev.preventDefault();
+addEventListener('pointerdown', ev => { if (!AR.on || typeof screen === 'undefined' || screen !== 'play' || AR.shopOpen || !AR.topBtns) return; const C = AR.topCv || cv, r = C.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * C.width, y = (ev.clientY - r.top) / r.height * C.height;
+  const b = AR.topBtns.find(q => x >= q.x - 2 && x <= q.x + q.w + 2 && y >= q.y - 2 && y <= q.y + q.h + 2); if (!b) return; ev.stopImmediatePropagation(); ev.preventDefault();
   if (b.id === 'quit') { if (AR.quitT > G.t) location.reload(); else AR.quitT = G.t + 2.5; }
   if (b.id === 'hero') arHeroSwapUI();
   if (b.id === 'dum') AR.dumHit = !AR.dumHit; }, true);
 // practice: change hunter on the spot (you go back to your base; your gold and items stay)
 { const st = arStart; arStart = function (m) { AR.startMsg = JSON.parse(JSON.stringify(m)); AR.prio = []; return st.apply(this, arguments); }; }
+// mark the moments my own hunter is attacking or casting: only those swipes become my weapon; a monster's swipe at me stays the monster's
+function arMarkMine() { AR.myAct = 0; for (const h of HUNTERS) for (const k of ['atk', 's1', 's2', 's3']) { const f = h[k]; if (typeof f !== 'function' || f.__mine) continue;
+    const w = function () { AR.myAct = (AR.myAct || 0) + 1; try { return f.apply(this, arguments); } finally { AR.myAct--; } }; w.__mine = 1; w.__gated = f.__gated; h[k] = w; } }
+{ const st = arStart; arStart = function (m) { const r = st.apply(this, arguments); arMarkMine(); return r; }; }
 function arSwapHero(hid) { if (!AR.practice || !AR.startMsg) return; const m = JSON.parse(JSON.stringify(AR.startMsg)), me = m.players.find(p => p.id === AR.id); if (!me) return; me.heroes = [hid];
   const gold = G.gold, inv = AR.inv.slice(), prio = (AR.prio || []).slice(), dh = AR.dumHit; arStart(m); G.gold = gold; AR.inv = inv; AR.prio = prio; AR.dumHit = dh; toast('YOU ARE NOW ' + (HUNTERS.find(h => h.id === hid) || {name: hid}).name); }
 function arHeroSwapUI() { let box = document.getElementById('arSwapBox'); if (box) { box.remove(); return; } box = document.createElement('div'); box.id = 'arSwapBox';
