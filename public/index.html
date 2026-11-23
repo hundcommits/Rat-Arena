@@ -4270,7 +4270,7 @@ function arOn(m) {
     case 'tz': if (AR.on && m.z) zone(Object.assign({}, m.z, {remote: 1})); break;
     case 'tail': AR.tailT = G.t + 3; break;
     case 'taunt': if (AR.on && AR.deadT <= 0 && !(AR.ccImmT > G.t) && !(G.inv > 1)) { AR.tauntT = G.t + Math.min(1.5, m.d || 1.2); AR.tauntBy = m.from; arCCAdd('TAUNTED', m.d || 1.2); arWord('TAUNTED', G.x, G.y - 44, '#F09595'); } break;
-    case 'heal': if (m.bub && AR.deadT <= 0) { G.inv = Math.max(G.inv || 0, m.bub); AR.bubT = G.t + m.bub; arWord('BUBBLE', G.x, G.y - 34, '#BFF4F8'); } if (m.cleanse) { AR.cc = []; G.lock = 0; AR.slowT = 0; } if (m.ccImm) AR.ccImmT = G.t + m.ccImm; if (m.petal) AR.petalT = G.t + 8; if (m.p) arHealPct(m.p); if ((m.sh || m.sf) && G) M().shield = (M().shield || 0) + M().max * (m.sh || 0) + (m.sf || 0); break;
+    case 'heal': if (m.bub && AR.deadT <= 0) { G.inv = Math.max(G.inv || 0, m.bub); AR.bubInv = G.t + m.bub; AR.bubT = G.t + Math.max(m.bub, m.ccImm || 0); arWord('BUBBLE', G.x, G.y - 34, '#BFF4F8'); } if (m.cleanse) { AR.cc = []; G.lock = 0; AR.slowT = 0; } if (m.ccImm) AR.ccImmT = G.t + m.ccImm; if (m.petal) AR.petalT = G.t + 8; if (m.p) arHealPct(m.p); if ((m.sh || m.sf) && G) M().shield = (M().shield || 0) + M().max * (m.sh || 0) + (m.sf || 0); break;
     case 'gold': arGold(m.n, m.x || undefined, m.y || undefined, m.k); break;
     case 'ah': (AR.ah = AR.ah || {})[m.k] = G.t + (m.d || 3); break;
     case 'tombhit': arTombHit(m.d); break;
@@ -4529,7 +4529,7 @@ function arWorld(m) { const seen = new Set();
 
 /* ---------- other players ---------- */
 function arState(m) { if (!AR.on) return; const r = AR.R[m.from]; if (!r) return; r.tx = m.x; r.ty = m.y; if (!r.seen) { r.x = m.x; r.y = m.y; } r.seen = G.t;
-  Object.assign(r, {bb: m.bb ? 1 : 0, items: m.it || [], cl: m.cl || [], rs: m.rs || 0, gold: m.gd || 0, face: m.f, rat: !!m.rt, hid: m.h, hp: m.hp, max: m.mx, dead: !!m.dd, stealth: !!m.st, nd: !!m.nd, bush: !!m.bu, air: !!m.ai, fly: !!m.fy, walk: m.w, fort: !!m.fo, inv: !!m.iv, lvl: m.lv || 1, al: m.al || [], wt: m.wt || 0, tb: m.tb || 0, bf: m.bf || 0, hop: m.hop || 0, flT: m.fl || 0, ks: m.ks || {}, aim: m.ai || 0, mv: !!m.mv}); arProxy(r); }
+  Object.assign(r, {bb: m.bb || 0, items: m.it || [], cl: m.cl || [], rs: m.rs || 0, gold: m.gd || 0, face: m.f, rat: !!m.rt, hid: m.h, hp: m.hp, max: m.mx, dead: !!m.dd, stealth: !!m.st, nd: !!m.nd, bush: !!m.bu, air: !!m.ai, fly: !!m.fy, walk: m.w, fort: !!m.fo, inv: !!m.iv, lvl: m.lv || 1, al: m.al || [], wt: m.wt || 0, tb: m.tb || 0, bf: m.bf || 0, hop: m.hop || 0, flT: m.fl || 0, ks: m.ks || {}, aim: m.ai || 0, mv: !!m.mv}); arProxy(r); }
 function arProxy(r) { if (r.team === AR.team) return; let p = r.proxy; const d = Math.hypot(r.x - G.x, r.y - G.y); const want = !r.dead && !(r.stealth && d > 60) && !(r.bush && d > 44);
   if (want && (!p || (p.dead && !(p.deadAt && G.t - p.deadAt < 2.5)))) { p = arSpawn('rplayer', r.x, r.y, {pid: r.id}); r.proxy = p; } if (p && !want) p.dead = true; if (p && !p.dead) { p.hp = r.hp; p.max = r.max; } }
 const AR_DK = ['x', 'y', 'r', 'a', 't', 't0', 'life', 'alt', 'k', 'x2', 'y2', 'tx', 'ty', 'hp', 'max', 'dead', 'f', 'on', 'lit', 'i', 'n', 'z', 'h'];
@@ -4538,7 +4538,7 @@ function arDeep(o, d) { const out = {}; let n = 0; for (const k in o) { const v 
     else if (Array.isArray(v)) { if (v.length <= 40 && v.every(q => typeof q === 'number')) out[k] = v.map(q => Math.round(q * 10) / 10); else if (v.length <= 24 && v.every(q => q && typeof q === 'object' && !q.getContext && !q.naturalWidth)) out[k] = v.map(q => { const o2 = {}; for (const kk of AR_DK) { const w = q[kk]; if (typeof w === 'number') o2[kk] = Math.round(w * 10) / 10; else if (typeof w === 'string' || typeof w === 'boolean') o2[kk] = w; } return o2; }); else continue; }
     else if (t === 'object' && d > 0 && v !== G && !(v instanceof Set) && !(v instanceof Map) && !v.getContext && !v.naturalWidth) out[k] = arDeep(v, d - 1); else continue;
     if (++n > 40) break; } return out; }
-function arSendState() { const m = M(); arSend({t: 's', bb: AR.bubT > G.t ? 1 : 0, cl: (AR.cc || []).map(c => [c.n, +c.t.toFixed(1), c.t0]), rs: AR.deadT > 0 ? Math.ceil(AR.deadT) : 0, gd: Math.floor(G.gold || 0), wt: G.hut && G.hut.kind === 'watch' ? [Math.round(G.hut.x), Math.round(G.hut.y), +(G.hut.hp === undefined ? 1 : Math.max(0, G.hut.hp / G.hut.mhp)).toFixed(2)] : 0, ks: arDeep(m.s, 2), tb: AR.tomb && AR.tomb.hp > 0 ? [Math.round(AR.tomb.x), Math.round(AR.tomb.y), Math.round(AR.tomb.hp), AR.tomb.max] : 0, ai: +(G.aimF || 0).toFixed(2), mv: G.moving ? 1 : 0, hop: (G.air > 0 ? Math.round(Math.sin((1 - G.air / G.airMax) * Math.PI) * G.airH) : 0) + (G.flyT > 0 ? Math.round(9 + Math.sin(T * 4) * 2) : 0), fl: G.flyT > 0 ? +G.flyT.toFixed(1) : 0, ar: G.air > 0 ? 1 : 0, x: Math.round(G.x), y: Math.round(G.y), f: G.face < 0 ? -1 : 1, rt: isRat() ? 1 : 0, h: m.h.id, hp: Math.round(Math.max(0, m.hp)), mx: Math.round(m.max), dd: AR.deadT > 0 ? 1 : 0, st: G.stealth > 0 && AR.revealT <= 0 && !m.s.praying && !m.s.dis ? 1 : 0, al: G.allies.filter(a => a.life > 0).slice(0, 8).map(a => arPlain(a, 18)), bu: G.inBush ? 1 : 0, ai: G.air > 0 ? 1 : 0, fy: G.flyT > 0 ? 1 : 0, fo: G.fort ? 1 : 0, iv: G.inv > 0 ? 1 : 0, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0), nd: m.h.id === 'shade' && G.night ? 1 : 0, it: (AR.inv || []).slice(0, 4), lv: G.lvl, w: Math.round((G.walk || 0) * 10) / 10}); }
+function arSendState() { const m = M(); arSend({t: 's', bb: AR.bubT > G.t ? (AR.bubInv > G.t ? 2 : 1) : 0, cl: (AR.cc || []).map(c => [c.n, +c.t.toFixed(1), c.t0]), rs: AR.deadT > 0 ? Math.ceil(AR.deadT) : 0, gd: Math.floor(G.gold || 0), wt: G.hut && G.hut.kind === 'watch' ? [Math.round(G.hut.x), Math.round(G.hut.y), +(G.hut.hp === undefined ? 1 : Math.max(0, G.hut.hp / G.hut.mhp)).toFixed(2)] : 0, ks: arDeep(m.s, 2), tb: AR.tomb && AR.tomb.hp > 0 ? [Math.round(AR.tomb.x), Math.round(AR.tomb.y), Math.round(AR.tomb.hp), AR.tomb.max] : 0, ai: +(G.aimF || 0).toFixed(2), mv: G.moving ? 1 : 0, hop: (G.air > 0 ? Math.round(Math.sin((1 - G.air / G.airMax) * Math.PI) * G.airH) : 0) + (G.flyT > 0 ? Math.round(9 + Math.sin(T * 4) * 2) : 0), fl: G.flyT > 0 ? +G.flyT.toFixed(1) : 0, ar: G.air > 0 ? 1 : 0, x: Math.round(G.x), y: Math.round(G.y), f: G.face < 0 ? -1 : 1, rt: isRat() ? 1 : 0, h: m.h.id, hp: Math.round(Math.max(0, m.hp)), mx: Math.round(m.max), dd: AR.deadT > 0 ? 1 : 0, st: G.stealth > 0 && AR.revealT <= 0 && !m.s.praying && !m.s.dis ? 1 : 0, al: G.allies.filter(a => a.life > 0).slice(0, 8).map(a => arPlain(a, 18)), bu: G.inBush ? 1 : 0, ai: G.air > 0 ? 1 : 0, fy: G.flyT > 0 ? 1 : 0, fo: G.fort ? 1 : 0, iv: G.inv > 0 ? 1 : 0, bf: (AR.fangT > 0 ? 1 : 0) | ((M().shield || 0) > 0 && AR.shellT > 0 ? 2 : 0), nd: m.h.id === 'shade' && G.night ? 1 : 0, it: (AR.inv || []).slice(0, 4), lv: G.lvl, w: Math.round((G.walk || 0) * 10) / 10}); }
 function arGotHit(m) { if (!AR.on || AR.deadT > 0) return; let d = m.pct ? M().max * m.pct : m.d; if (!(d > 0)) return;
   if (!m.mon) { // another player hit me: never more than a slice of my health per second, so fights last
     // no cap: burst is real now. Armor (from the hunter's class) is taken off in hurtMe
@@ -5270,10 +5270,10 @@ const VOLT_R = () => (M().s.surgeT > G.t ? 80 : 30);
     for (const t of s.locks) { ctx.save(); ctx.strokeStyle = 'rgba(255,241,120,0.55)'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(G.x, G.y - 6); ctx.lineTo(t.x, t.y - 4); ctx.stroke(); ctx.setLineDash([]);
       ctx.strokeStyle = 'rgba(255,241,120,0.9)'; ctx.beginPath(); ctx.ellipse(t.x, t.y, R, R * 0.7, 0, 0, TAU); ctx.stroke(); ctx.fillStyle = `rgba(255,241,120,${(0.08 + 0.22 * k).toFixed(2)})`; ctx.beginPath(); ctx.ellipse(t.x, t.y, R * k, R * 0.7 * k, 0, 0, TAU); ctx.fill(); ctx.restore(); } }; }
 // CELESTE: praying eats one star every 0.3s; never more than 2 constellations out at once
-{ const K = KIT.celeste, tk = K.tick, up = K.s1up;
-  arOver(K, {ab1: "Wish (HOLD, up to 3s): pray inside a crystal sanctuary, eating one star every 0.3s (not inside an enemy tower's range). Let go to call a constellation: 3s for every star eaten, bigger with more stars. At most 2 constellations at once; a 3rd replaces the oldest"});
+{ const K = KIT.celeste, tk = K.tick;
+  arOver(K, {ab1: "Wish (HOLD): pray inside a crystal sanctuary, eating one star every 0.3s, as many as she has (not inside an enemy tower's range). Let go to call a constellation: 3s for every star eaten, bigger with more stars. She can have as many constellations out as she calls"});
   K.tick = function (m, dt, on, rat) { if (AR.on && m.s.praying && on) m.s.pray -= dt * (9 - 2.333); return tk.call(this, m, dt, on, rat); };
-  K.s1up = function (m) { const r = up.call(this, m); if (AR.on) { const L = G.allies.filter(a => a.kind === 'spirit' && a.life > 0); for (let i = 0; i < L.length - 2; i++) { L[i].life = 0; sparks(L[i].x, L[i].y, 8, '#FFF1B8', '#BFE0FF', 60); } } return r; }; }
+}
 /* the damage side of all of the above, in one place */
 { const hu = hurt; hurt = function (e, d, o) { if (!(AR.on && e && G && d > 0)) return hu(e, d, o); const id = M().h.id;
     if (id === 'shade') { o = Object.assign({}, o, {notShade: 1}); if (!e.static && !AR.noLone && !arAllyNear(e, 70)) { d *= 1.5; if (!(e.loneT > G.t)) { e.loneT = G.t + 4; arWord('ALONE', e.x - 22, e.y - 18, '#85B7EB'); } } }
@@ -5306,16 +5306,26 @@ function arCCDraw(x, y, list) { list.forEach(c => arCCIcon(c[0], x, y)); list.fo
 const AR_REACH = {TANK: 70, FIGHTER: 80, ASSASSIN: 120, SUPPORT: 150, MAGE: 170, MARKSMAN: 200};
 // basic-attack reach: by class, with a few hunters that differ (Volt reaches far as a rat; Sable a bit more on a full charge)
 function arReach() { return arHeroRange(M().h.id, isRat()); }
+// the attack joystick: the direction of the drag on the attack button (kept for a moment after the finger lifts, so the release fires that way)
+function arTouchDragA() { if (typeof skAim !== 'undefined' && skAim && skAim.btn === 0 && skAim.c && skAim.o && Math.hypot(skAim.c.x - skAim.o.x, skAim.c.y - skAim.o.y) > 8) { const a = Math.atan2(skAim.c.y - skAim.o.y, skAim.c.x - skAim.o.x); AR.tAim = {a, t: G.t}; return a; } return null; }
 function arAimPt() { if (TOUCH || !mouse || mouse.t < 0) { let an = G.aimF !== undefined ? G.aimF : ((G.face || 1) > 0 ? 0 : Math.PI);
-    if (typeof skAim !== 'undefined' && skAim && skAim.btn === 0 && skAim.c && skAim.o && Math.hypot(skAim.c.x - skAim.o.x, skAim.c.y - skAim.o.y) > 8) an = Math.atan2(skAim.c.y - skAim.o.y, skAim.c.x - skAim.o.x);
+    const da = TOUCH ? arTouchDragA() : null; if (da !== null) an = da; else if (TOUCH && AR.tAim && G.t - AR.tAim.t < 0.4) an = AR.tAim.a;
     return {x: G.x + Math.cos(an) * 60, y: G.y + Math.sin(an) * 60}; } return {x: G.x + mouse.x - Ww / 2, y: G.y + mouse.y - Hw / 2}; }
 // a basic attack only goes for an enemy in the direction you aim: ranged hunters need it near the aim line,
 // melee hunters within the front of the swing; attacks centred on the hunter (Bulwark's stomps, Mirror's twin slash) still hit all around
 function arInAim(e, R) { if (arRangeCentred(M().h.id, isRat())) return true; const p = arAimPt(), a = Math.atan2(p.y - G.y, p.x - G.x), dx = e.x - G.x, dy = (e.y - 4) - (G.y - 4), d = Math.hypot(dx, dy), er = e.r || 6;
   if (d < er + 3) return true; let da = Math.atan2(dy, dx) - a; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
   if (R <= 70) return Math.abs(da) <= 1.15; return d * Math.cos(da) > 0 && Math.abs(d * Math.sin(da)) <= er + 10; }
+// nobody where you aim: the attack still goes there. Kits that need a target get an empty point on the aim line (your aim distance, up to full range);
+// it cannot be hurt, slowed or killed, so shots just fly there and swings cut the air
+function arPhantom(R, aim) { const a = Math.atan2(aim.y - G.y, aim.x - G.x), d = Math.max(Math.min(R, 26), Math.min(R, Math.hypot(aim.x - G.x, aim.y - G.y)));
+  return {x: G.x + Math.cos(a) * d, y: G.y + Math.sin(a) * d, hp: 1, max: 1, r: 3, alt: 0, phantom: true, k: 'phantom', s: {}, team: -1}; }
 function arClickGate(K) { if (!K || !K.atk || K.atk.__gated) return; const a0 = K.atk; K.__click = 1;
   K.atk = function (m, dt, rat) { if (!AR.on) return a0.call(this, m, dt, rat);
+    // on a phone or tablet the attack button is a joystick: the press waits a moment so you can drag to aim,
+    // then it fires where you drag (a quick tap fires the way you face); holding keeps attacking toward the drag
+    if (TOUCH && !AR.inQ) { if (G.atkTap && atkHeld) { AR.tSup = true; AR.tPress = G.t; }
+      if (AR.tSup) { if (atkHeld && arTouchDragA() === null && G.t - AR.tPress < 0.2) { G.atkTap = false; return; } AR.tSup = false; G.atkTap = true; } }
     // a click made while reloading is kept for 0.5s and fires the moment the weapon is ready, so every click counts and attack speed shows
     // one click = one attack: the press fires, or if the weapon is not ready the click waits; the release only fires if the press did not
     if (G.atkTap && !AR.inQ) AR.clickFired = false;
@@ -5333,6 +5343,7 @@ function arClickGate(K) { if (!K || !K.atk || K.atk.__gated) return; const a0 = 
     near = function (r, x, y, sk) { if (x !== undefined && (Math.abs(x - G.x) > 0.5 || Math.abs(y - G.y) > 0.5)) return nr(r, x, y, sk);
       if (r !== undefined) AR.rngL[M().h.id + (isRat() ? 'n' : 'd')] = r; const Rr = r === undefined ? reach : r; let b = null, bd = 1e9;
       for (const e of G.en) { if (e.dead || (sk && sk.has(e)) || (e.lane && e.team === AR.team) || e.charm >= 1e8) continue; const dp = Math.hypot(e.x - G.x, e.y - G.y) - (e.r || 6); if (dp > Rr) continue; if (!arInAim(e, Rr)) continue; const dm = Math.hypot(e.x - aim.x, e.y - aim.y); if (dm < bd) { bd = dm; b = e; } }
+      if (!b && Rr > 0 && !arRangeCentred(M().h.id, isRat())) b = arPhantom(Rr, aim);
       return b; };
     try { return a0.call(this, m, dt, rat); } finally { near = nr; } }; }
 for (const id in KIT) arClickGate(KIT[id]);
@@ -5353,10 +5364,10 @@ for (const id in KIT) arClickGate(KIT[id]);
 { const K = KIT.regina, a1 = K.atk; K.atk = function (m, dt, rat) { if (!AR.on || rat) return a1.call(this, m, dt, rat); if (m.s && m.s.line > 0) return a1.call(this, m, dt, rat);
     if (!(atkHeld || G.atkTap || G.atkRel) || m.fireT > 0) return; if (atkHeld && (G.atkDur || 0) > 0.35) return a1.call(this, m, dt, rat);
     if (G.atkTap) { const p_ = arAimPt(), a = Math.atan2(p_.y - G.y, p_.x - G.x); faceTo(a); m.fireT = 0.55; sfx('shoot'); AR.rgV = {t: G.t, hits: new Map()}; for (let i = -2; i <= 2; i++) arrowShot(a + i * 0.13, {}); } }; }
-// Celeste: Wish lasts 3s at most, and she can't pray inside an enemy tower's range
+// Celeste: no time limit on Wish; inside an enemy tower's range the prayer ends and the stars eaten so far are called as a constellation
 { const K = KIT.celeste, tk = K.tick; K.tick = function (m, dt, on, rat) { if (tk) tk.call(this, m, dt, on, rat); if (!AR.on || !m.s || !m.s.praying) return;
     m.s.wishT = (m.s.wishT || 0) + dt; const inTower = AR.S && AR.S.some(t => t.team !== AR.team && !t.dead && Math.hypot(t.x - G.x, t.y - G.y) < arRange(t));
-    if (m.s.wishT > 3 || inTower) { m.s.praying = false; m.s.wishT = 0; if (inTower) arWord('TOO CLOSE TO A TOWER', G.x, G.y - 34, '#F09595'); } else if (!m.s.praying) m.s.wishT = 0; }; }
+    if (inTower) { m.s.wishT = 0; arWord('TOO CLOSE TO A TOWER', G.x, G.y - 34, '#F09595'); if (K.s1up) K.s1up(m); else m.s.praying = false; } }; }
 /* no Panic Shift in the arena: dropping low never turns a hunter into a rat by itself */
 // the castle's foot is solid: nobody walks into it
 const AR_CASTLE_BOX = {x0: -48, x1: 48, y0: -26, y1: 10};
@@ -6071,10 +6082,10 @@ Object.assign(KIT.wren, {
   s3(m) { AR.tailT = G.t + 3; for (const q of arMates()) if (Math.hypot(q.x - G.x, q.y - G.y) <= 120) arSend({t: 'tail', to: q.id}); ring(G.x, G.y, 120, '255,248,220', 0.4); word('TAILWIND', G.x, G.y - 30, '#FFF8D8'); sfx('dash'); }});
 Object.assign(KIT.vitra, {
   pas: 'Kiln Heart: stand still a moment and her next shards burn', rp: 'Tempered: at night her dome is 30% bigger and her bubble lasts longer',
-  ab3: 'Stained Glass Dome (18s): a dome around her for 5s; teammates inside take 20% less damage', ab1: 'Pane (10s): a glass wall where you aim for 4s; then it shatters outward and hurts enemies near it', ab2: 'Blown Bubble (14s): seals the teammate nearest where you aim (or herself) in glass: cleansed, immune to stuns for 2s, untouchable for 1s',
+  ab3: 'Stained Glass Dome (18s): a dome around her for 5s; teammates inside take 20% less damage', ab1: 'Pane (10s): a glass wall where you aim for 4s; then it shatters outward and hurts enemies near it', ab2: 'Blown Bubble (14s): seals the teammate nearest where you aim (or herself) in glass: cleansed, immune to stuns, slows and freezes for 6s, untouchable for the first 1s',
   cd1: 10, cd2: 14, cd3: 18, ind3: ['ring', 90],
   s2() { const a = arAimPt(); let t = null, bd = 160; for (const q of arMates()) { const d = Math.hypot(q.x - a.x, q.y - a.y); if (d < bd && Math.hypot(q.x - G.x, q.y - G.y) < 160) { bd = d; t = q; } } const long = G.night ? 0.5 : 0;
-    if (t) arSend({t: 'heal', to: t.id, p: 0, cleanse: 1, ccImm: 2 + long, bub: 1 + long}); else { AR.cc = []; G.lock = 0; AR.slowT = 0; AR.ccImmT = G.t + 2 + long; G.inv = Math.max(G.inv || 0, 1 + long); AR.bubT = G.t + 1 + long; word('BUBBLE', G.x, G.y - 30, '#BFF4F8'); } sfx('freeze'); },
+    if (t) arSend({t: 'heal', to: t.id, p: 0, cleanse: 1, ccImm: 6 + long, bub: 1 + long}); else { AR.cc = []; G.lock = 0; AR.slowT = 0; AR.ccImmT = G.t + 6 + long; G.inv = Math.max(G.inv || 0, 1 + long); AR.bubInv = G.t + 1 + long; AR.bubT = G.t + 6 + long; word('BUBBLE', G.x, G.y - 30, '#BFF4F8'); } sfx('freeze'); },
   s3() { arTeamZone({k: 'vdome', x: G.x, y: G.y, r: G.night ? 117 : 90, life: 5}); sfx('level'); }});
 ZONE.vdome = {tick(z) { if (Math.hypot(G.x - z.x, G.y - z.y) < z.r) AR.domeT = G.t + 0.3; }, draw(z) { return ZONE.dome.draw(z); }};
 /* ===================== rules from the item talk: attack speed, cooldowns, energy heroes, Mirror's reach ===================== */
@@ -6338,7 +6349,7 @@ function arDrawGuide() { if (!AR.on || !G || AR.deadT > 0 || G.dead) return; con
   const act = atkHeld || (AR._atkShow > G.t), x = Math.round(G.x), y = Math.round(G.y + 13); if (TOUCH && !act) return;
   ctx.save(); ctx.fillStyle = `rgba(120,200,255,${act ? 0.13 : 0.06})`; ctx.strokeStyle = `rgba(175,228,255,${act ? 0.8 : 0.4})`; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.ellipse(x, y, R, R * 0.7, 0, 0, TAU); ctx.fill(); ctx.stroke();
-  if (cen) { if (id === 'bulwark') arBwPips(x, y); ctx.restore(); return; }
+  if (cen) { ctx.restore(); return; }
   const t = arGuideTarget(R), aim = arAimPt(); let ex, ey;
   if (t) { ex = t.x; ey = t.y - 4 - (t.alt || 0); } else { const a = Math.atan2(aim.y - G.y, aim.x - G.x), c = Math.cos(a), s_ = Math.sin(a), k = R / Math.sqrt(c * c + (s_ / 0.7) * (s_ / 0.7)); ex = G.x + c * k; ey = G.y + 13 + s_ * k * 0.7; }
   const sx = x, sy = Math.round(G.y - 2); ctx.strokeStyle = `rgba(150,230,255,${act ? 0.28 : 0.14})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(Math.round(ex), Math.round(ey)); ctx.stroke();
@@ -6656,21 +6667,44 @@ function arReloadBar() { const m = M(); if (!AR.on || !m || AR.deadT > 0) return
   const x = Math.round(G.x) - 10, y = Math.round(G.y) - 30, k = 1 - f / AR._rl0; ctx.fillStyle = 'rgba(16,20,26,0.85)'; ctx.fillRect(x - 1, y - 1, 22, 4); ctx.fillStyle = '#E6F1FB'; ctx.fillRect(x, y, Math.round(20 * k), 2); }
 
 // ---------- Vitra: Kiln Heart glows at her feet when ready; hot shards are orange with an ember trail; the bubble is a real glass bubble ----------
-{ const K = KIT.vitra; K.atk = function (m) { if (m.fireT > 0) return; const n = near(160); if (!n) return; m.fireT = 0.75; const a = dirTo(n); faceTo(a); const hot = G.stillT >= 1, n0 = G.shots.length;
+{ const K = KIT.vitra; K.atk = function (m) { if (m.fireT > 0) return; const n = near(160); if (!n) return; m.fireT = 0.75; const a = dirTo(n); faceTo(a); const hot = !!(m.s.kiln || G.stillT >= 1), n0 = G.shots.length; m.s.kiln = false;
     for (let i = -1; i <= 1; i++) arrowShot(a + i * 0.16, {dmg: 9, onHit: hot ? e => status(e, {burn: 2}) : null}); sfx('shoot');
     if (hot) { for (const b of G.shots.slice(n0)) { b.col = '#FF8A2A'; b.sz = 2; const tk = b.tick; b.tick = (q, dt) => { if (tk) tk(q, dt); if (Math.random() < 0.6) G.fx.push({k: 'p', x: q.x, y: q.y, vx: 0, vy: -10, t: 0.3, c: Math.random() < 0.5 ? '#FFD040' : '#F0703A'}); }; } fx({k: 'ring', x: G.x, y: G.y, r: 14, t: 0.25, t0: 0.25}); } };
   K.atk.__gated = false; arClickGate(K); }
-function arDrawKiln() { const m = M(); if (!AR.on || !m || m.h.id !== 'vitra' || isRat() || !(G.stillT >= 1) || AR.deadT > 0) return; const x = Math.round(G.x), y = Math.round(G.y + 13), p = 0.5 + 0.5 * Math.sin(G.t * 6);
+function arDrawKiln() { const m = M(); if (!AR.on || !m || m.h.id !== 'vitra' || isRat() || !(m.s.kiln || G.stillT >= 1) || AR.deadT > 0) return; const x = Math.round(G.x), y = Math.round(G.y + 13), p = 0.5 + 0.5 * Math.sin(G.t * 6);
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,138,42,${(0.55 + 0.35 * p).toFixed(2)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, 13, 6, 0, 0, TAU); ctx.stroke();
   ctx.strokeStyle = `rgba(255,214,90,${(0.4 * p).toFixed(2)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, 17, 8, 0, 0, TAU); ctx.stroke(); ctx.restore();
   if (Math.random() < 0.3) G.fx.push({k: 'p', x: x + (Math.random() - 0.5) * 22, y: y - 2, vx: 0, vy: -16, t: 0.5, c: Math.random() < 0.5 ? '#FFD040' : '#F0703A'}); }
 // who is in a bubble: you (G.inv from a bubble) and teammates (their state says so); drawn for everyone
 AR.bubT = 0;
-function arBubble(x, y, t) { const r = 15 + Math.sin(t * 5) * 0.8; ctx.save(); ctx.fillStyle = 'rgba(191,244,248,0.16)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 1.15, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = 'rgba(191,244,248,0.85)'; ctx.lineWidth = 1; ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.ellipse(x - 5, y - 8, 4, 3, -0.5, Math.PI * 1.1, Math.PI * 1.8); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(Math.round(x + 7), Math.round(y - 9), 1, 1); ctx.fillRect(Math.round(x - 9), Math.round(y + 6), 1, 1); ctx.restore(); }
-function arDrawBubbles() { if (!AR.on) return; if (AR.bubT > G.t && AR.deadT <= 0) arBubble(Math.round(G.x), Math.round(G.y - 2), G.t);
-  for (const r of Object.values(AR.R)) { if (!r.bb || r.dead) continue; const p = r.proxy || r; arBubble(Math.round(p.x), Math.round(p.y - 2), G.t + 1); } }
+// Blown Bubble: a clear glass sphere with an iridescent sheen, a bright rim, highlights, sparkles inside and a glowing ring underfoot.
+// Brighter and thicker while untouchable (the first 1s), then a thinner shield for the rest of the stun immunity
+function arBubble(x, y, t, strong) { const R = 17 + Math.sin(t * 4) * 0.6, cy = y - 3, ry = R * 1.05; ctx.save();
+  // the ring on the ground and a swirl of light under the feet
+  ctx.globalCompositeOperation = 'lighter'; const gy = y + 15;
+  const sw = ctx.createRadialGradient(x, gy, 0, x, gy, 18); sw.addColorStop(0, `rgba(255,140,230,${strong ? 0.45 : 0.25})`); sw.addColorStop(0.6, `rgba(90,200,255,${strong ? 0.3 : 0.16})`); sw.addColorStop(1, 'rgba(90,200,255,0)');
+  ctx.fillStyle = sw; ctx.beginPath(); ctx.ellipse(x, gy, 18, 7, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = `rgba(200,240,255,${strong ? 0.95 : 0.6})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, gy, 16 + Math.sin(t * 6), 6, 0, 0, TAU); ctx.stroke();
+  for (let i = 0; i < 3; i++) { const a = t * 2.5 + i * TAU / 3; ctx.fillStyle = i % 2 ? 'rgba(255,150,235,0.9)' : 'rgba(150,230,255,0.9)'; ctx.fillRect(Math.round(x + Math.cos(a) * 14), Math.round(gy + Math.sin(a) * 5), 2, 1); }
+  // the glass: clear in the middle, tinted toward the edge (cyan above, pink below)
+  ctx.globalCompositeOperation = 'source-over'; const g = ctx.createRadialGradient(x - 4, cy - 5, 2, x, cy, R); g.addColorStop(0, 'rgba(255,255,255,0.02)'); g.addColorStop(0.7, `rgba(170,230,255,${strong ? 0.12 : 0.07})`); g.addColorStop(1, `rgba(200,170,255,${strong ? 0.4 : 0.25})`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, cy, R, ry, 0, 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'lighter'; const ir = ctx.createLinearGradient(x, cy - ry, x, cy + ry); ir.addColorStop(0, 'rgba(110,220,255,0.22)'); ir.addColorStop(0.5, 'rgba(110,220,255,0)'); ir.addColorStop(0.75, 'rgba(255,110,210,0)'); ir.addColorStop(1, 'rgba(255,110,210,0.3)');
+  ctx.fillStyle = ir; ctx.beginPath(); ctx.ellipse(x, cy, R, ry, 0, 0, TAU); ctx.fill();
+  // the rim, brightest at the top left
+  ctx.lineWidth = strong ? 2 : 1; ctx.strokeStyle = `rgba(190,240,255,${strong ? 0.9 : 0.65})`; ctx.beginPath(); ctx.ellipse(x, cy, R, ry, 0, 0, TAU); ctx.stroke();
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.ellipse(x, cy, R, ry, 0, Math.PI * 1.05, Math.PI * 1.55); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(x - 5, cy - 7, 6, 5, -0.6, Math.PI * 1.1, Math.PI * 1.7); ctx.stroke();
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(Math.round(x - 9), Math.round(cy - 9), 2, 2); ctx.fillRect(Math.round(x - 6), Math.round(cy - 12), 1, 1);
+  ctx.strokeStyle = 'rgba(255,190,240,0.6)'; ctx.beginPath(); ctx.ellipse(x, cy, R - 2, ry - 2, 0, Math.PI * 0.15, Math.PI * 0.5); ctx.stroke();
+  // sparkles drifting inside
+  for (let i = 0; i < 7; i++) { const a = t * (0.8 + i * 0.13) + i * 2.1, rr = (0.35 + 0.5 * ((i * 37) % 10) / 10) * R, sx = Math.round(x + Math.cos(a) * rr), sy = Math.round(cy + Math.sin(a) * rr * 1.05), tw = Math.sin(t * 5 + i * 1.9);
+    if (tw < 0.1) continue; ctx.fillStyle = ['#FFFFFF', '#FFB4F0', '#AEEBFF'][i % 3]; ctx.fillRect(sx, sy, 1, 1); if (tw > 0.75) { ctx.fillRect(sx - 1, sy, 3, 1); ctx.fillRect(sx, sy - 1, 1, 3); } }
+  ctx.restore(); }
+function arDrawBubbles() { if (!AR.on) return; if (AR.bubT > G.t && AR.deadT <= 0) arBubble(Math.round(G.x), Math.round(G.y - 2), G.t, AR.bubInv > G.t);
+  for (const r of Object.values(AR.R)) { if (!r.bb || r.dead) continue; const p = r.proxy || r; arBubble(Math.round(p.x), Math.round(p.y - 2), G.t + 1, r.bb === 2); }
+  // Vitra's dome: the front of the glass goes over the hunters inside
+  for (const z of G.zones) if ((z.k === 'vdome' || z.k === 'dome') && z.life > 0) arDomeFront(z); }
 { const zd = ZONE.arworld.draw; ZONE.arworld.draw = function (z) { zd.call(this, z); arDrawKiln(); }; }
 // the bubble and the reload bar are drawn over the hunters (as a lasting local effect)
 { const u0 = update; update = function (dt) { const r = u0.apply(this, arguments); if (AR.on && G && G.fx && !G.fx.some(f => f.k === 'ovr')) G.fx.push({k: 'ovr', x: 0, y: 0, t: 1e9, t0: 1e9}); return r; }; }
@@ -6721,6 +6755,75 @@ ZONE.sunspot.draw = function (z) { const x = Math.round(z.x), y = Math.round(z.y
   for (let i = 0; i < 4; i++) { const px = x - 18 + ((i * 11 + G.t * 20) % 36), py = y - ((G.t * 30 + i * 33) % 120); ctx.fillStyle = 'rgba(255,240,170,0.8)'; ctx.fillRect(Math.round(px), Math.round(py), 1, 2); } ctx.restore(); };
 arWrapDraw('mossmoke', z => arAuraRing(Math.round(z.x), Math.round(z.y + 4), z.r, PSN.rgb, G.t, 2));
 // Vitra's stained-glass dome: coloured panes with lead lines over a glass floor, and a shine that slides across
+// ===== Vitra's Stained Glass Dome: a real glass hemisphere, built pixel by pixel once per size and kept =====
+const AR_DOME = {};
+const AR_GLASS = [[30, 110, 240], [255, 196, 40], [225, 40, 80], [30, 190, 110], [150, 60, 235], [25, 200, 240], [245, 70, 185], [255, 125, 25], [20, 165, 175], [255, 225, 90]];
+function arHash(a, b) { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function arDomePat(lon, lat, R) {
+  // returns [r,g,b,alphaKind] alphaKind: 0 glass, 1 lead, 2 gold, 3 clear (doorway), 4 bright (rose centre)
+  const D = Math.PI / 180, G = 10, gw = 2 * Math.PI / G, gi = Math.floor((lon + Math.PI + gw / 2) / gw), u = (lon + Math.PI + gw / 2) / gw - gi, latD = lat / D;
+  if (latD < 3.5) return [232, 184, 74, 2];
+  // crown rosette
+  if (latD > 64) { if (latD < 66.5) return [42, 34, 51, 1]; if (latD < 68) return [232, 184, 74, 2]; const rho = (90 - latD) / 22, th = lon;
+    if (rho < 0.22) return rho < 0.16 ? [255, 241, 184, 4] : [232, 184, 74, 2]; const sec = Math.floor(((th + Math.PI) / (2 * Math.PI)) * 16), fs = ((th + Math.PI) / (2 * Math.PI)) * 16 - sec;
+    if (fs < 0.1 || Math.abs(rho - 0.58) < 0.05) return [42, 34, 51, 1]; const c = AR_GLASS[(sec * 3 + (rho > 0.58 ? 5 : 0)) % AR_GLASS.length]; return [c[0], c[1], c[2], 0]; }
+  // ribs between the panels
+  const du = Math.abs(u - 0.5); if (du > 0.465) return [42, 34, 51, 1]; if (du > 0.43) return [232, 184, 74, 2];
+  if (Math.abs(latD - 34) < 1.4) return [42, 34, 51, 1];
+  const lx = (u - 0.5) * gw * Math.cos(lat) * R, front = gi % G === 5;
+  // rose windows round the middle
+  if (latD > 36) { const cy = 50 * D, rr = 0.36 * gw * Math.cos(cy) * R, ly = (lat - cy) * R, d = Math.hypot(lx, ly) / rr;
+    if (d < 1.12) { if (d > 1) return [232, 184, 74, 2]; if (d > 0.9) return [42, 34, 51, 1]; if (d < 0.2) return [255, 241, 184, 4]; if (d < 0.27) return [42, 34, 51, 1];
+      const a = Math.atan2(ly, lx), s = Math.floor((a + Math.PI) / (2 * Math.PI) * 8), fs = (a + Math.PI) / (2 * Math.PI) * 8 - s; if (fs < 0.12) return [42, 34, 51, 1];
+      const c = AR_GLASS[(gi * 2 + s + (d > 0.6 ? 3 : 0)) % AR_GLASS.length]; return [c[0], c[1], c[2], 0]; } }
+  // pointed arch windows round the bottom (the front one is an open doorway)
+  if (latD < 33) { const ly = (lat - 3.5 * D) * R, top = 29 * D * R, half = 0.3 * gw * Math.cos(lat) * R; const aw = ly < top * 0.62 ? half : half * Math.sqrt(Math.max(0, 1 - Math.pow((ly - top * 0.62) / (top * 0.38), 2)));
+    const ad = Math.abs(lx) - aw; if (ad < 0) { if (front) return ad > -1.2 ? [232, 184, 74, 2] : [200, 235, 255, 3];
+      if (ad > -1.2) return [42, 34, 51, 1]; if (Math.abs(Math.abs(lx) - aw / 3) < 0.55 && ly < top * 0.7) return [42, 34, 51, 1];
+      const p = (lx + ly) / 6, q = (lx - ly) / 6, ip = Math.floor(p), iq = Math.floor(q); if (p - ip < 0.16 || q - iq < 0.16) return [42, 34, 51, 1];
+      const c = AR_GLASS[Math.abs(gi * 3 + ip * 2 + iq * 5) % AR_GLASS.length]; return [c[0], c[1], c[2], 0]; } }
+  // everything else: small pieces of coloured glass held by lead
+  const gx = u * 3.4, gy = latD / 8.5; let best = 9, second = 9, id = 0;
+  for (let ix = Math.floor(gx) - 1; ix <= Math.floor(gx) + 1; ix++) for (let iy = Math.floor(gy) - 1; iy <= Math.floor(gy) + 1; iy++) { const px = ix + 0.2 + 0.6 * arHash(ix + gi * 31, iy), py = iy + 0.2 + 0.6 * arHash(iy + 77, ix + gi * 31), d = Math.hypot(gx - px, gy - py); if (d < best) { second = best; best = d; id = ix * 7 + iy * 13 + gi * 5; } else if (d < second) second = d; }
+  if (second - best < 0.07) return [42, 34, 51, 1]; const c = AR_GLASS[Math.abs(id) % AR_GLASS.length]; return [c[0], c[1], c[2], 0]; }
+function arMakeDome(R) { R = Math.round(R); if (AR_DOME[R]) return AR_DOME[R]; const W = 2 * R + 8, oy = Math.ceil(1.15 * R) + 6, H = oy + Math.ceil(0.7 * R) + 6, ox = R + 4;
+  const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; }, cb = mk(), cf = mk(), gb = cb.getContext('2d'), gf = cf.getContext('2d'), ib = gb.createImageData(W, H), iff = gf.createImageData(W, H), sp = [];
+  const A = 0.81 / 0.49 + 1, L = [-0.45, 0.8, 0.4], Ln = Math.hypot(...L), V = [0, 0.55, 0.83];
+  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) { const sx = px - ox + 0.5, sy = py - oy + 0.5, B = 2 * sy * 0.9 / 0.49, C = sx * sx + sy * sy / 0.49 - R * R, disc = B * B - 4 * A * C; if (disc < 0) continue;
+    const q = Math.sqrt(disc);
+    for (const back of [false, true]) { const Y = back ? (-B - q) / (2 * A) : (-B + q) / (2 * A); if (Y < 0) continue; const Z = (sy + 0.9 * Y) / 0.7, X = sx, lon = Math.atan2(X, Z), lat = Math.asin(Math.min(1, Y / R));
+      const [r, g, b, k] = arDomePat(lon, lat, R), n = [X / R, Y / R, Z / R], facing = Math.max(0, n[0] * V[0] + n[1] * V[1] + n[2] * V[2]), lit = Math.max(0, (n[0] * L[0] + n[1] * L[1] + n[2] * L[2]) / Ln), fr = Math.pow(1 - facing, 2.2);
+      const fr2 = Math.pow(1 - facing, 4); let m = k === 1 ? 1 : k === 2 ? 0.95 + 0.3 * lit : 0.95 + 0.3 * lit, w = k === 1 ? 0.1 * fr2 : k === 3 ? 0.5 * fr2 : 0.6 * fr2;
+      if (back) { m = k === 1 ? 1 : k === 2 ? 1.05 : 1.0; w = 0; } let R_ = r * m + 255 * w, G_ = g * m + 255 * w, B_ = b * m + 255 * w;
+      let al = k === 1 ? (back ? 0.95 : 0.6) : k === 2 ? (back ? 0.97 : 0.75) : k === 3 ? 0.08 + 0.4 * fr2 : k === 4 ? 0.95 : (back ? 0.93 : Math.min(0.9, 0.28 + 0.6 * fr2 + (lat > 1.12 ? 0.4 : 0)));
+      if (k === 4) { R_ = 255; G_ = 250; B_ = 220; }
+      const o = (py * W + px) * 4, D_ = back ? ib.data : iff.data; D_[o] = Math.min(255, R_); D_[o + 1] = Math.min(255, G_); D_[o + 2] = Math.min(255, B_); D_[o + 3] = Math.round(al * 255);
+      if (!back && k === 0 && arHash(px, py) < 0.02) sp.push([px - ox, py - oy, r, g, b]); } }
+  gb.putImageData(ib, 0, 0); gf.putImageData(iff, 0, 0); return (AR_DOME[R] = {back: cb, front: cf, ox, oy, W, H, sp}); }
+function arDomeK(z) { const age = z.age || 0, grow = Math.min(1, age / 0.35), fade = Math.min(1, Math.max(0, z.life) / 0.5); return {grow, fade}; }
+// under the hunters: coloured light on the floor, the glowing rim, and the back half of the glass
+function arDomeBack(z) { const D = arMakeDome(z.r), x = Math.round(z.x), y = Math.round(z.y), {grow, fade} = arDomeK(z), t = G.t; ctx.save();
+  ctx.fillStyle = `rgba(16,10,34,${(0.36 * fade * grow).toFixed(3)})`; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.7, 0, 0, TAU); ctx.fill();
+  // the light through the glass paints a coloured rose on the floor
+  ctx.globalCompositeOperation = 'lighter'; const N = 20, ag = (0.3 + 0.06 * Math.sin(t * 2)) * fade * grow;
+  for (let ring = 0; ring < 3; ring++) { const r0 = z.r * [0.12, 0.42, 0.72][ring], r1 = z.r * [0.4, 0.7, 0.97][ring];
+    for (let i = 0; i < N; i++) { const a0 = i * TAU / N + ring * 0.16 + t * 0.05, a1 = a0 + TAU / N * 0.86, c = AR_GLASS[(i * 3 + ring * 7) % AR_GLASS.length];
+      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${(ag * (ring === 1 ? 0.9 : 0.7)).toFixed(3)})`; ctx.beginPath(); ctx.moveTo(x + Math.cos(a0) * r0, y + Math.sin(a0) * r0 * 0.7); ctx.lineTo(x + Math.cos(a0) * r1, y + Math.sin(a0) * r1 * 0.7);
+      ctx.lineTo(x + Math.cos(a1) * r1, y + Math.sin(a1) * r1 * 0.7); ctx.lineTo(x + Math.cos(a1) * r0, y + Math.sin(a1) * r0 * 0.7); ctx.closePath(); ctx.fill(); } }
+  const gc = ctx.createRadialGradient(x, y, 0, x, y, z.r * 0.3); gc.addColorStop(0, `rgba(255,240,190,${(0.4 * fade * grow).toFixed(3)})`); gc.addColorStop(1, 'rgba(255,240,190,0)'); ctx.fillStyle = gc; ctx.beginPath(); ctx.ellipse(x, y, z.r * 0.3, z.r * 0.21, 0, 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fade; const h = Math.round(D.H * grow);
+  ctx.drawImage(D.back, 0, D.H - h, D.W, h, x - D.ox, y - D.oy + D.H - h, D.W, h);
+  ctx.globalAlpha = 1; ctx.restore(); }
+// over the hunters: the front half of the glass, the glowing rim, glints and rays
+function arDomeFront(z) { const D = arMakeDome(z.r), x = Math.round(z.x), y = Math.round(z.y), {grow, fade} = arDomeK(z), t = G.t; ctx.save(); ctx.globalAlpha = fade; const h = Math.round(D.H * grow);
+  ctx.drawImage(D.front, 0, D.H - h, D.W, h, x - D.ox, y - D.oy + D.H - h, D.W, h);
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.45 * fade * (0.85 + 0.15 * Math.sin(t * 2)); ctx.drawImage(D.front, 0, D.H - h, D.W, h, x - D.ox, y - D.oy + D.H - h, D.W, h); ctx.globalAlpha = fade; const pu = 0.75 + 0.25 * Math.sin(t * 3);
+  ctx.strokeStyle = `rgba(255,236,170,${(0.55 * pu * fade).toFixed(2)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, z.r + 1, (z.r + 1) * 0.7, 0, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = `rgba(255,255,255,${(0.9 * fade).toFixed(2)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, z.r, z.r * 0.7, 0, 0, TAU); ctx.stroke();
+  if (grow >= 1) { for (let i = 0; i < D.sp.length; i++) { const s = D.sp[i], tw = Math.sin(t * 4 + i * 1.7); if (tw < 0.75) continue; ctx.fillStyle = `rgba(255,255,255,${((tw - 0.75) * 4 * fade).toFixed(2)})`; ctx.fillRect(x + s[0], y + s[1], 1, 1); if (tw > 0.95) { ctx.fillRect(x + s[0] - 1, y + s[1], 3, 1); ctx.fillRect(x + s[0], y + s[1] - 1, 1, 3); } }
+    for (let i = 0; i < 4; i++) { const rx = x - z.r * 0.5 + i * z.r * 0.33 + Math.sin(t * 0.7 + i) * 6, top = y - D.oy - 18, g = ctx.createLinearGradient(rx, top, rx, y - z.r * 0.3); g.addColorStop(0, 'rgba(255,250,220,0)'); g.addColorStop(0.5, `rgba(255,250,220,${(0.08 * fade).toFixed(3)})`); g.addColorStop(1, 'rgba(255,250,220,0)'); ctx.fillStyle = g; ctx.fillRect(rx, top, 3 + (i % 2) * 2, y - z.r * 0.3 - top); } }
+  ctx.restore(); }
+
 function arDomeDraw(z) { const x = Math.round(z.x), y = Math.round(z.y), r = z.r, k = 0.62; arAuraRing(x, y + 4, r, '160,235,245', G.t, 0);
   const cols = ['232,90,90', '252,204,60', '90,200,120', '90,150,240', '180,120,240', '240,150,60'], N = 12; ctx.save();
   for (let i = 0; i < N; i++) { const a0 = Math.PI + i * Math.PI / N, a1 = a0 + Math.PI / N;
@@ -6729,7 +6832,8 @@ function arDomeDraw(z) { const x = Math.round(z.x), y = Math.round(z.y), r = z.r
   ctx.strokeStyle = 'rgba(70,90,100,0.22)'; ctx.lineWidth = 1; for (let i = 0; i <= N; i++) { const a = Math.PI + i * Math.PI / N; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r * k); ctx.lineTo(x + Math.cos(a) * r * 0.12, y + Math.sin(a) * r * 0.12 * k - r * 0.2); ctx.stroke(); }
   ctx.beginPath(); ctx.ellipse(x, y, r, r * k, 0, Math.PI, TAU); ctx.stroke(); ctx.strokeStyle = 'rgba(220,250,255,0.85)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * k, 0, Math.PI, TAU); ctx.stroke();
   const sh = Math.PI + ((G.t * 0.5) % 1) * Math.PI; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y, r * 0.9, r * 0.9 * k, 0, sh, sh + 0.25); ctx.stroke(); ctx.restore(); }
-ZONE.dome.draw = arDomeDraw; ZONE.vdome.draw = arDomeDraw;
+ZONE.dome.draw = arDomeBack; ZONE.vdome.draw = arDomeBack;
+setTimeout(() => { try { arMakeDome(90); arMakeDome(117); arMakeDome(70); } catch (e) {} }, 1500);
 
 // ---------- Vitra's Pane: a real glass wall across your aim; it blocks enemy hunters and their shots, cracks as it ages, then bursts ----------
 { const K = KIT.vitra; K.s1 = function (m, ai) { const p = aimXY(ai), a = Math.atan2(p.y - G.y, p.x - G.x); zone({k: 'pane', x: p.x, y: p.y, r: 36, life: 4, a, team: AR.team, L: 26}); sfx('ability'); for (let i = 0; i < 8; i++) G.fx.push({k: 'p', x: p.x + (Math.random() - 0.5) * 40, y: p.y - Math.random() * 20, vx: 0, vy: -10, t: 0.5, c: '#E8FFFF'}); }; }
@@ -6904,6 +7008,86 @@ function arSetZoom(z) { if (AR.zoomNow === z) return; if (!AR.baseSw) AR.baseSw 
     ctx.fillStyle = 'rgba(255,241,184,0.9)'; ctx.fillRect(x - 2, y, 5, 1); ctx.fillRect(x, y - 2, 1, 5);
     ctx.restore(); }; }
 { const g0 = arDrawGuide; arDrawGuide = function () { if (AR.on && G && M() && M().h.id === 'celeste' && M().s.chg > 0 && M().s.stars > 0) return; return g0.apply(this, arguments); }; }
+{ const h0 = hurt; hurt = function (e) { if (e && e.phantom) return 0; return h0.apply(this, arguments); }; }
+{ const s0 = status; status = function (e) { if (e && e.phantom) return; return s0.apply(this, arguments); }; }
+{ const p0 = push; push = function (e) { if (e && e.phantom) return; return p0.apply(this, arguments); }; }
+// stances switch on the moment you have stood still 1s (not on your next click), and stay on while you walk until they are used:
+// Mirror's clone stance (with its 240 ring), Brine's Anchor Stance, Vitra's Kiln Heart
+for (const id of ['mirror', 'brine', 'vitra']) { const K = KIT[id], tk = K.tick; K.tick = function (m, dt, on, rat) { if (tk) tk.call(this, m, dt, on, rat); if (!AR.on || !on || rat || AR.deadT > 0) return; const s = m.s;
+    if (G.stillT >= 1) { if (id === 'vitra' && !s.kiln) { s.kiln = true; sfx('pick'); } else if (id !== 'vitra' && !s.stance) { s.stance = true; if (id === 'brine') word('ANCHOR STANCE', G.x, G.y - 28, '#85B7EB'); else word('MIRROR STANCE', G.x, G.y - 28, '#CECBF6'); } } }; }
+// ANU: a click is a small golden homing missile (it homes only on the enemy you aim at); hold 1s and release for the Sun Ray,
+// his one and only laser (40 Sun). No thin laser while holding any more.
+{ const K = KIT.anu;
+  K.atk = function (m, dt, rat) { if (!AR.on || m.s.dive) return; if (AR.anuEn === undefined) AR.anuEn = 100;
+    if (atkHeld) { AR.anuHold = (AR.anuHold || 0) + dt; if (AR.anuHold >= 1 && !AR.anuRdy) { if (AR.anuEn >= 40) { AR.anuRdy = 1; arWord('SUN RAY', G.x, G.y - 30, '#FCCC3C'); sfx('pick'); } else if (!(AR.noEnT > G.t)) { AR.noEnT = G.t + 1.5; arWord('NO SUN', G.x, G.y - 30, '#FCCC3C'); } } return; }
+    const held = AR.anuHold || 0, rdy = AR.anuRdy; AR.anuHold = 0; AR.anuRdy = 0; if (!(G.atkRel || G.atkTap)) return;
+    const p = arAimPt(), a = Math.atan2(p.y - G.y, p.x - G.x);
+    if (rdy && held >= 1) { faceTo(a); AR.anuEn -= 40; m.fireT = 0.6; fx({k: 'beam2', x: G.x, y: G.y - 2, a, len: 210, w: 9, t: 0.35, col: '255,230,120'}); sfx('boom'); shake = 0.15; AR.sunRay = 1;
+      try { lineHit(a, 210, 14, (rat ? 28 : 22) * 2.5, null, {anuLaser: 1}); } finally { AR.sunRay = 0; } if (typeof arPose === 'function') arPose('anu:' + (rat ? 'r' : 'd')); return; }
+    if (m.fireT > 0) return; const n = near(170), real = n && !n.phantom ? n : null, a2 = real ? Math.atan2(real.y - G.y, real.x - G.x) : a; faceTo(a2); m.fireT = rat ? 0.6 : 0.75;
+    const dmg = (rat ? 28 : 22) * (real && (real.lane || real.neutral) ? 1.3 : 1);
+    shot({a: a2, spd: 240, dmg, home: real ? 8 : 0, target: real, life: real ? 1.4 : 170 / 240, col: '#FCCC3C', sz: 2, ghost: true,
+      draw: b => { const x = Math.round(b.x), y = Math.round(b.y); ctx.fillStyle = 'rgba(255,230,120,0.35)'; ctx.fillRect(x - 3, y - 3, 7, 7); ctx.fillStyle = '#2B2B2B'; ctx.fillRect(x - 2, y - 2, 5, 5); ctx.fillStyle = '#FCCC3C'; ctx.fillRect(x - 1, y - 1, 3, 3); ctx.fillStyle = '#FFF1B8'; ctx.fillRect(x, y - 1, 1, 1); },
+      tick: b => { if (!b.home && real === null) b.target = null; if (Math.random() < 0.8) fx({k: 'p', x: b.x - Math.cos(b.a) * 3, y: b.y - Math.sin(b.a) * 3, vx: 0, vy: 0, t: 0.2, c: Math.random() < 0.5 ? '#FFF1B8' : '#E8A33C'}); }});
+    fx({k: 'p', x: G.x + Math.cos(a2) * 9, y: G.y - 3 + Math.sin(a2) * 7, vx: 0, vy: 0, t: 0.08, c: '#FFFFFF'}); sfx('shoot'); AR.anuEn = Math.min(100, AR.anuEn + 6 * arEnGain()); };
+  K.atk.__gated = false; arClickGate(K); }
+
+// WREN: the Paper Plane is a real folded paper plane: it glides along your aim through everything in a line, slowing enemies and healing teammates it passes
+{ const K = KIT.wren;
+  const plane = (x, y, a, t) => { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a); ctx.scale(1.5, 1.5); const bob = Math.round(Math.sin(t * 20) * 0.6);
+    const P = (dx, dy, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(dx, dy + bob, w, h); };
+    P(-6, -3, 1, 7, '#2B2B2B'); P(-5, -3, 2, 1, '#2B2B2B'); P(-5, 3, 2, 1, '#2B2B2B'); P(-3, -2, 2, 1, '#2B2B2B'); P(-3, 2, 2, 1, '#2B2B2B'); P(-1, -1, 3, 1, '#2B2B2B'); P(-1, 1, 3, 1, '#2B2B2B'); P(2, 0, 3, 1, '#2B2B2B');
+    P(-5, -2, 2, 5, '#FFFFFF'); P(-3, -1, 2, 3, '#FFFFFF'); P(-1, 0, 3, 1, '#F4F1E6'); P(-5, 0, 6, 1, '#C9C4B6'); P(1, 0, 1, 1, '#FFFFFF'); ctx.restore(); };
+  K.atk = function (m) { if (m.fireT > 0) return; const n = near(170); if (!n) return; m.fireT = 0.7; const a = dirTo(n); faceTo(a); const o = m.s.bag ? (AR.R[m.s.bag.id] || G) : G, healed = new Set(), mates = arMates();
+    const b = shot({x: o.x, y: o.y - 4, a, spd: 260, dmg: 15, life: 170 / 260, pierce: 99, r: 4, ghost: true, onHit: e => { status(e, {slow: 0.8}); sparks(e.x, e.y - 4, 3, '#FFFFFF', '#C9C4B6', 40); },
+      draw: q => plane(q.x, q.y, q.a, q.life),
+      tick: q => { if (Math.random() < 0.5) fx({k: 'p', x: q.x - Math.cos(q.a) * 6, y: q.y - Math.sin(q.a) * 6, vx: 0, vy: 0, t: 0.22, c: '#F4F1E6'});
+        for (const t of mates) { if (healed.has(t.id)) continue; if (Math.hypot(t.x - q.x, t.y - 4 - q.y) < 14) { healed.add(t.id); arSend({t: 'heal', to: t.id, p: (G.night ? 0.026 : 0.02) * arHealMul()}); } } }});
+    sfx('shoot'); return b; };
+  K.atk.__gated = false; arClickGate(K); }
+arOver(KIT.wren, {basic: 'Paper Plane: a folded paper plane glides where you aim, through everything in a line, slowing enemies and healing every teammate it passes'});
+arOver(KIT.anu, {basic: 'Pharaoh Missile: click: a small golden missile that homes in on the enemy you aim at, +6 Sun (+30% to minions and monsters). Hold 1s and release: Sun Ray, a wide beam that pierces, +30% to hunters and slows them, for 40 Sun. Standing on his Healing Earth refills Sun fast'});
+// Bulwark's three stomp charges always sit under his feet, on phones and computers, attacking or not
+{ const zd = ZONE.arworld.draw; ZONE.arworld.draw = function (z) { zd.call(this, z); if (!AR.on || !G || AR.deadT > 0 || G.dead) return; const m = M(); if (!m || m.h.id !== 'bulwark') return; ctx.save(); arBwPips(Math.round(G.x), Math.round(G.y + 13)); ctx.restore(); }; }
+// inside Vitra's bubble the hunter stays steady instead of blinking
+{ const d0 = draw; draw = function () { if (AR.on && G && AR.bubT > G.t && G.inv > 0) { const v = G.inv; G.inv = 0; try { return d0.apply(this, arguments); } finally { G.inv = v; } } return d0.apply(this, arguments); }; }
+// ===== Ash's Fire Roar: a real pixel flame (white-yellow core, orange, red, crimson, purple smoke at the edges), flowing outward =====
+// drawn at half resolution into one shared canvas (chunky pixels like the reference, and cheap on tablets), then scaled up
+function arVN(x, y) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, s = t => t * t * (3 - 2 * t), h = (a, b) => { let n = (a * 374761393 + b * 668265263) | 0; n = (n ^ (n >>> 13)) * 1274126177 | 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1), u = s(xf), v = s(yf); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
+const AR_FIRE_PAL = [[0.93, 255, 248, 214, 255], [0.8, 255, 214, 74, 255], [0.66, 255, 150, 40, 255], [0.52, 240, 84, 36, 250], [0.4, 196, 36, 46, 240], [0.3, 120, 24, 66, 215], [0.2, 64, 18, 60, 170]];
+const AR_FIRE = {W: 200, H: 56}; AR_FIRE.c = document.createElement('canvas'); AR_FIRE.c.width = AR_FIRE.W; AR_FIRE.c.height = AR_FIRE.H; AR_FIRE.g = AR_FIRE.c.getContext('2d'); AR_FIRE.img = AR_FIRE.g.createImageData(AR_FIRE.W, AR_FIRE.H);
+function arFireImg(L, HW, t, grow) { const F = AR_FIRE, W = F.W, H = F.H, D = F.img.data, cy = H / 2, l = L / 2, hwM = HW / 2, Lg = l * grow, ex = 0.3 * l * grow; D.fill(0);
+  const w = Math.min(W, Math.ceil(Lg + ex) + 2), hh = Math.min(cy, Math.ceil(hwM * 1.4) + 2);
+  for (let px = 0; px < w; px++) { const k = Math.min(1, px / l), over = px > Lg ? (px - Lg) / ex : 0, hw = (2 + (hwM - 2) * Math.pow(k, 0.72)) * Math.sqrt(Math.max(0, 1 - over * over)), u = px * 2;
+    for (let py = Math.floor(cy - hh); py < cy + hh; py++) { const v = (py - cy) * 2;
+      const n = arVN(u * 0.045 - t * 4.5, v * 0.07 + t * 0.4) * 0.35 + arVN(u * 0.09 - t * 7.5, v * 0.13 + t * 0.7) * 0.4 + arVN(u * 0.2 - t * 13, v * 0.3 - t * 1.3) * 0.25;
+      const edge = Math.abs(py - cy) / (hw * (0.7 + 0.6 * n) + 0.01); if (edge > 1.05) continue;
+      let heat = 1.16 - 0.5 * k - 0.8 * edge * edge + 0.5 * (n - 0.5) - over * 0.55; if (px < 4) heat += (4 - px) * 0.06;
+      heat += ((px + py) & 1) ? 0.015 : -0.015; let col = null; for (const p of AR_FIRE_PAL) if (heat >= p[0]) { col = p; break; } if (!col) continue;
+      const o = (py * W + px) * 4; D[o] = col[1]; D[o + 1] = col[2]; D[o + 2] = col[3]; D[o + 3] = col[4]; } }
+  F.g.putImageData(F.img, 0, 0); return {w, h: H}; }
+// draws the roar from (x, y) toward a; L length, HW half width at the end, t time, grow 0..1 (the burst at the start and the fade at the end)
+function arFireCone(x, y, a, L, HW, t, grow) { const r = arFireImg(L, HW, t, grow); ctx.save();
+  ctx.globalCompositeOperation = 'lighter'; const gx = x + Math.cos(a) * L * 0.45 * grow, gy = y + 10 + Math.sin(a) * L * 0.45 * grow, gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, L * 0.6);
+  gr.addColorStop(0, 'rgba(255,140,40,0.2)'); gr.addColorStop(1, 'rgba(255,90,20,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(gx, gy, L * 0.6, L * 0.38, a, 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over'; ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a); ctx.imageSmoothingEnabled = false; ctx.drawImage(AR_FIRE.c, 0, 0, r.w, r.h, 2, -r.h, r.w * 2, r.h * 2);
+  ctx.globalCompositeOperation = 'lighter'; const b = ctx.createRadialGradient(10, 0, 0, 10, 0, 16); b.addColorStop(0, 'rgba(255,240,190,0.55)'); b.addColorStop(1, 'rgba(255,160,60,0)'); ctx.fillStyle = b; ctx.fillRect(-6, -16, 32, 32);
+  ctx.restore();
+  for (let i = 0; i < 26; i++) { const s = (t * (0.7 + (i % 5) * 0.13) + i * 0.137) % 1, d = s * L * 1.15 * grow, sp = Math.sin(i * 12.9898) * Math.atan2(HW, L) * 1.6 + Math.sin(t * 3 + i) * 0.08, ex = x + Math.cos(a + sp) * d, ey = y + Math.sin(a + sp) * d - s * 14;
+    if (s > 0.95) continue; ctx.fillStyle = s < 0.5 ? '#FFE27A' : (i % 3 ? '#FF9A2A' : '#FFF6C8'); ctx.globalAlpha = 1 - s; ctx.fillRect(Math.round(ex), Math.round(ey), i % 4 === 0 ? 2 : 1, i % 4 === 0 ? 2 : 1); }
+  ctx.globalAlpha = 1; }
+// Ash's roar (hold): it bursts out, grows while held, and dies down when she lets go
+{ const K = KIT.ash, dr = K.draw, tk = K.tick;
+  K.tick = function (m, dt, on, rat) { const r = tk.call(this, m, dt, on, rat); const s = m.s; if (AR.on) { if (s.blow) { s.fg = Math.min(1, (s.fg || 0) + dt / 0.18); s.fra = s.ra; s.fL = ashLen(s); s.fW = ashW(s); } else s.fg = Math.max(0, (s.fg || 0) - dt / 0.2); } return r; };
+  K.draw = function (m, rat, hop) { const s = m.s; if (!AR.on || !(s.blow || s.fg > 0)) return dr.call(this, m, rat, hop);
+    const bl = s.blow; s.blow = false; try { dr.call(this, m, rat, hop); } finally { s.blow = bl; }
+  }; }
+// the flame is drawn on the ground layer, under every hunter, minion and tower, so whoever stands in it stays visible
+function arAshFlame(x, y, s) { if (!s || !(s.blow || s.fg > 0)) return; const L = s.fL || ashLen(s), HW = (s.fW || ashW(s)) * 1.3, a = s.fra !== undefined ? s.fra : (s.ra || 0), grow = Math.max(0.05, s.blow ? (s.fg || 1) : (s.fg || 0));
+  arFireCone(x + Math.cos(a) * 7, y - 5 + Math.sin(a) * 4, a, L, HW, G.t, grow); }
+{ const zd = ZONE.arworld.draw; ZONE.arworld.draw = function (z) { zd.call(this, z); if (!AR.on || !G) return; const m = M(); if (m && m.h.id === 'ash' && AR.deadT <= 0) arAshFlame(G.x, G.y, m.s);
+    for (const r of Object.values(AR.R)) { if (r.hid !== 'ash' || r.dead || !r.ks) continue; const p = r.proxy || r; arAshFlame(p.x, p.y, r.ks); } }; }
 /* longer days: 2:00 of day and 1:15 of night in the arena (the game's clock runs slower by day and faster by night) */
 const AR_DAYS = 120, AR_NIGHTS = 75;
 { const u1 = update; update = function (dt) { const n0 = G && G.night; const r = u1.apply(this, arguments); if (AR.on && G && G.night === n0 && !G.peace) G.clock += dt * (G.night ? NIGHT / AR_NIGHTS - 1 : DAY / AR_DAYS - 1); return r; }; }
