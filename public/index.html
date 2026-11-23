@@ -6177,7 +6177,7 @@ function glyph(name, cx, cy, al, dot) { const g = GLY[name]; if (!g) return; con
       txt(f.s, f.x, f.y - k * 16, Math.round(f.sz * pop), f.col); ctx.restore(); return; }
     if (f.k === 'rdyg') { glyph(f.g, f.x, f.y, f.al); return; }
     if (f.k === 'rdyo') { arOrb(f.x, f.y, f.col, f.ph); return; }
-    if (f.k === 'rdyb') { arBubble(f.x, f.y, f.col); return; }
+    if (f.k === 'rdyb') { arReadyOrb(f.x, f.y, f.col); return; }
     if (f.k === 'ipop') { const k = 1 - f.t / f.t0, hop = Math.sin(Math.min(1, k * 2.2) * Math.PI) * 5; glyph(f.g || 'coin', f.x, f.y - 6 - k * 10 - hop, Math.min(1, f.t / f.t0 * 2.5)); return; }
     if (f.k === 'thorns') { const k = 1 - f.t / f.t0, n = 9; ctx.save(); ctx.globalAlpha = f.t / f.t0; for (let i = 0; i < n; i++) { const a = i / n * TAU + f.a0, r0 = 6, r1 = 10 + 12 * Math.min(1, k * 3);
         ctx.strokeStyle = i % 2 ? '#1A1420' : '#3A2E40'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(f.x + Math.cos(a) * r0, f.y + Math.sin(a) * r0 * 0.7); ctx.lineTo(f.x + Math.cos(a) * r1, f.y + Math.sin(a) * r1 * 0.7); ctx.stroke();
@@ -6209,7 +6209,7 @@ function arOrb(x, y, col, ph) { const p = 0.75 + 0.25 * Math.sin(G.t * 5 + ph); 
   for (const [r, a] of [[6, 0.12], [4, 0.25], [2.5, 0.5]]) { ctx.fillStyle = `rgba(${col},${(a * p).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, r * p + 0.5, 0, TAU); ctx.fill(); }
   ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2); ctx.restore(); }
 // a see-through bubble around the body while a shield is up
-function arBubble(x, y, col) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const w = Math.sin(G.t * 4) * 0.6;
+function arReadyOrb(x, y, col) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const w = Math.sin(G.t * 4) * 0.6;
   ctx.fillStyle = `rgba(${col},0.10)`; ctx.beginPath(); ctx.ellipse(x, y - 8, 14 + w, 17 - w, 0, 0, TAU); ctx.fill();
   ctx.strokeStyle = `rgba(${col},0.55)`; ctx.lineWidth = 1; ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.ellipse(x, y - 8, 11, 14, 0, -2.4, -1.6); ctx.stroke(); ctx.restore(); }
 const ORB_COL = {drop: '232,60,60', flame: '90,230,220', shield: '230,246,255', ember: '255,150,50', auro: '140,240,210', crack: '200,208,220'};
